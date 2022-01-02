@@ -1,0 +1,10 @@
+# This file tracks properties of this Flutter project.
+# Used by Flutter tool to assess capabilities and perform upgrades etc.
+#
+# This file should be version controlled and should not be manually edited.
+
+version:
+  revision: abddbd178a0db50c32da14cf1d500fd0a3221e16
+  channel: update-conductor-to-use-git-protocol
+
+project_type: app
