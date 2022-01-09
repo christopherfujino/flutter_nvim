@@ -13,12 +13,32 @@ class NeoVim {
       <String>['--embed'],
       env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
     );
-    final Stream<String> out = server.stdout
-        .transform<String>(utf8.decoder)
-        .transform<String>(const LineSplitter());
-    out.listen(io.stdout.writeln);
-    //server.stdin.write('hi');
+    final Stream<List<int>> out = server.stdout;
+    out.listen((List<int> data) {
+      io.stdout.writeln('got some data!');
+      io.stdout.writeln(_fromIntsToString(data));
+    });
+    final Stream<List<int>> err = server.stderr;
+    err.listen((List<int> data) {
+      io.stdout.writeln('got some error!');
+      io.stdout.writeln(data);
+    });
+    _sendStringToSink('["hi"]', server.stdin);
     return server;
+  }
+
+  String _fromIntsToString(List<int> integers) {
+    StringBuffer buffer = StringBuffer();
+    for (final int i in integers) {
+      buffer.writeCharCode(i);
+    }
+    return buffer.toString();
+  }
+
+  void _sendStringToSink(String str, io.IOSink sink) {
+    for (final int code in str.codeUnits) {
+      sink.writeCharCode(code);
+    }
   }
 
   Future<io.Process> spawnServer(
