@@ -15,9 +15,9 @@ class NeoVim {
           <String>['--embed'],
           env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
         ) {
-        futureServer.onError((Object error, StackTrace stacktrace) {
-          throw 'Whoopsies!\n$error';
-        });
+    futureServer.onError((Object error, StackTrace stacktrace) {
+      throw 'Whoopsies!\n$error';
+    });
   }
 
   static const String binary = 'nvim';
