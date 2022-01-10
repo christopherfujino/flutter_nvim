@@ -16,7 +16,7 @@ class NeoVim {
           env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
         ) {
         futureServer.onError((Object error, StackTrace stacktrace) {
-
+          throw 'Whoopsies!\n$error';
         });
   }
 
