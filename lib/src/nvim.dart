@@ -10,16 +10,22 @@ const int RESPONSE = 1;
 const int NOTIFICATION = 2;
 
 class NeoVim {
+  NeoVim()
+      : futureServer = spawnServer(
+          <String>['--embed'],
+          env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
+        ) {
+        futureServer.onError((Object error, StackTrace stacktrace) {
+
+        });
+  }
+
   static const String binary = 'nvim';
   final io.HttpClient client = io.HttpClient();
-  final msg.Packer packer = msg.Packer();
-  final Map<int, Completer<Response>> _responseCompleters = <int, Completer<Response>>{};
+  final Map<int, Completer<Response>> _responseCompleters =
+      <int, Completer<Response>>{};
 
-  late final Future<io.Process> futureServer = spawnServer(
-    //<String>['--headless'],
-    <String>['--embed'],
-    env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
-  );
+  final Future<io.Process> futureServer;
 
   Future<io.Process> main() async {
     try {
@@ -37,7 +43,8 @@ class NeoVim {
         io.stdout.writeln(data);
       });
       //_sendStringToSink('[$REQUEST, 42, "nvim_get_api_info", []]', server.stdin);
-      final Future<Response> response = _sendRequest('nvim_get_api_info', [], server.stdin);
+      final Future<Response> response =
+          _sendRequest('nvim_get_api_info', [], server.stdin);
       print(await response);
       return server;
     } finally {
@@ -52,29 +59,14 @@ class NeoVim {
     }
   }
 
-  String _fromIntsToString(List<int> integers) {
-    StringBuffer buffer = StringBuffer();
-    for (final int i in integers) {
-      io.stderr.write('$i\t');
-      buffer.writeCharCode(i);
-    }
-    return buffer.toString();
-  }
-
-  Future<void> _sendStringToSink(String str, io.IOSink sink) {
-    for (final int code in str.codeUnits) {
-      sink.writeCharCode(code);
-    }
-    return sink.flush();
-  }
-
   int _nextMsgid = 0;
   int get nextMsgid {
     _nextMsgid += 1;
     return _nextMsgid - 1;
   }
 
-  Future<Response> _sendRequest(String method, List<String> params, io.IOSink sink) async {
+  Future<Response> _sendRequest(
+      String method, List<String> params, io.IOSink sink) async {
     final int msgid = nextMsgid;
     final Uint8List requestBytes = _buildRequest(msgid, method, params);
     final Completer<Response> completer = Completer<Response>();
@@ -92,6 +84,8 @@ class NeoVim {
   // https://github.com/msgpack-rpc/msgpack-rpc/blob/master/spec.md#request-message
   Uint8List _buildRequest(int msgid, String method, List<String> params) {
     final msg.Packer packer = msg.Packer();
+
+    // [type, msgid, method, params]
     packer.packListLength(4);
     packer.packInt(REQUEST);
 
@@ -123,25 +117,24 @@ class NeoVim {
       throw 'not expecting msgid $msgid!';
     }
     if (messageList[2] != null) {
-      return Response(
-        msgid: msgid,
-        error: RPCError.fromList(messageList[2]!),
-        result: null, // either error or result will be null
-      );
+      throw RPCError.fromList(messageList[2]!);
+      //return Response(
+      //  msgid: msgid,
+      //  error: RPCError.fromList(messageList[2]!),
+      //  result: null, // either error or result will be null
+      //);
     }
-    // response
-    print(messageList[3].runtimeType);
-    print(messageList[3]);
-    return Response(
+    final response = Response(
       msgid: msgid,
       error: null,
-      result: null,
+      result: messageList[3],
     );
+    _responseCompleters[msgid]!.complete(response);
 
-    // TODO complete future
+    return response;
   }
 
-  Future<io.Process> spawnServer(
+  static Future<io.Process> spawnServer(
     List<String> args, {
     Map<String, String>? env,
   }) async {
@@ -176,11 +169,12 @@ class Response extends AbstractResponse {
   String toString() => '''
 msgid: $msgid
 error: $error
+result: $result
 ''';
 }
 
 // :help nvim_error_event
-class RPCError {
+class RPCError implements Exception {
   const RPCError({
     required this.type,
     required this.message,
