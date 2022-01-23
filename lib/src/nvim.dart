@@ -1,4 +1,4 @@
-import 'dart:async' show Completer, StreamController;
+import 'dart:async' show Completer, StreamController, StreamSubscription;
 import 'dart:io' as io;
 import 'dart:typed_data' show Uint8List;
 
@@ -28,18 +28,32 @@ abstract class NeoVimInterface {
           <String>['--embed'],
           env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
       ) {
+    _logController.onListen = () {
+      _logsHaveListener = true;
+      for (final String message in _startupLogBuffer) {
+        print(message);
+      }
+    };
+    listen((String message) {
+      if (!_logsHaveListener) {
+        _startupLogBuffer.add(message);
+      } else {
+        print(message);
+      }
+    });
+
     futureProcess.onError((Object error, StackTrace stacktrace) {
       throw 'Whoopsies!\n$error';
     });
     futureProcess.then((io.Process process) {
       process.stdout.listen((List<int> data) {
-        io.stdout.writeln('got some data!');
+        printStatus('got some data!');
         final response = _parseResponse(data);
-        io.stdout.write(response.toString());
+        printStatus(response.toString());
       });
       process.stderr.listen((List<int> data) {
-        io.stdout.writeln('got some error!');
-        io.stdout.writeln(data);
+        printError('got some error!');
+        printError('data');
       });
     });
   }
@@ -62,12 +76,21 @@ abstract class NeoVimInterface {
     return _nextMsgid - 1;
   }
 
-  final StreamController<String> _logController = StreamController<String>(); // TODO use
+  final StreamController<String> _logController = StreamController<String>();
+
+  final List<String> _startupLogBuffer = <String>[];
+  bool _logsHaveListener = false;
+
+  // The return value usually does not need to be used.
+  StreamSubscription listen(void Function(String) callback) {
+    return _logController.stream.listen(callback);
+  }
+
   void printStatus(String message) {
-    _logController.add(message);
+    _logController.add('$message\n');
   }
   void printError(String message) {
-    _logController.add(message);
+    _logController.add('$message\n');
   }
 
   Future<Response> sendRequest(
