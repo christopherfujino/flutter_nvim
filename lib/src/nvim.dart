@@ -1,7 +1,6 @@
-import 'dart:async' show Completer;
+import 'dart:async' show Completer, StreamController;
 import 'dart:io' as io;
 import 'dart:typed_data';
-//import 'dart:convert' show utf8, LineSplitter;
 
 import 'package:messagepack/messagepack.dart' as msg;
 
@@ -10,14 +9,32 @@ const int RESPONSE = 1;
 const int NOTIFICATION = 2;
 
 class NeoVim {
-  NeoVim()
-      : futureServer = spawnServer(
+  NeoVim._()
+      : futureProcess = spawnServer(
           <String>['--embed'],
           env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
         ) {
-    futureServer.onError((Object error, StackTrace stacktrace) {
+    futureProcess.onError((Object error, StackTrace stacktrace) {
       throw 'Whoopsies!\n$error';
     });
+    futureProcess.then((io.Process process) {
+      process.stdout.listen((List<int> data) {
+        io.stdout.writeln('got some data!');
+        final response = _parseResponse(data);
+        io.stdout.write(response.toString());
+      });
+      process.stderr.listen((List<int> data) {
+        io.stdout.writeln('got some error!');
+        io.stdout.writeln(data);
+      });
+    });
+  }
+
+  // Ensure consumers do not use a [NeoVim] instance until 
+  static Future<NeoVim> asyncFactory() async {
+    final NeoVim instance = NeoVim._();
+    instance.process = await instance.futureProcess;
+    return instance;
   }
 
   static const String binary = 'nvim';
@@ -25,45 +42,20 @@ class NeoVim {
   final Map<int, Completer<Response>> _responseCompleters =
       <int, Completer<Response>>{};
 
-  final Future<io.Process> futureServer;
+  final Future<io.Process> futureProcess;
 
-  Future<io.Process> main() async {
-    try {
-      final io.Process server = await futureServer;
-      final Stream<List<int>> out = server.stdout;
-      out.listen((List<int> data) {
-        io.stdout.writeln('got some data!');
-        final response = _parseResponse(data);
-        io.stdout.write(response.toString());
-        //io.stdout.writeln(_fromIntsToString(data));
-      });
-      final Stream<List<int>> err = server.stderr;
-      err.listen((List<int> data) {
-        io.stdout.writeln('got some error!');
-        io.stdout.writeln(data);
-      });
-      //_sendStringToSink('[$REQUEST, 42, "nvim_get_api_info", []]', server.stdin);
-      final Future<Response> response =
-          _sendRequest('nvim_get_api_info', [], server.stdin);
-      print(await response);
-      return server;
-    } finally {
-      futureServer.then((io.Process server) {
-        final bool success = server.kill(io.ProcessSignal.sigkill);
-        if (success) {
-          print('successfully killed nvim process.');
-        } else {
-          print('nvim already dead');
-        }
-      });
-    }
-  }
+  // As a performance optimization, this is populated once [futureProcess]
+  // finishes. Consumers MUST instantiate [NeoVim] objects via [asyncFactory],
+  // to ensure [process] is non-null.
+  late final io.Process process;
 
   int _nextMsgid = 0;
   int get nextMsgid {
     _nextMsgid += 1;
     return _nextMsgid - 1;
   }
+
+  final StreamController<String> logController = StreamController<String>(); // TODO use
 
   Future<Response> _sendRequest(
       String method, List<String> params, io.IOSink sink) async {
@@ -132,6 +124,11 @@ class NeoVim {
     _responseCompleters[msgid]!.complete(response);
 
     return response;
+  }
+
+  /// Call nvim_get_api_info.
+  Future<Response> getApiInfo() async {
+    return _sendRequest('nvim_get_api_info', [], process.stdin);
   }
 
   static Future<io.Process> spawnServer(
