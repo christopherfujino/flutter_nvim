@@ -1,6 +1,8 @@
 import 'dart:async' show Completer, StreamController;
 import 'dart:io' as io;
-import 'dart:typed_data';
+import 'dart:typed_data' show Uint8List;
+
+import 'api_calls.dart' show ApiCalls;
 
 import 'package:messagepack/messagepack.dart' as msg;
 
@@ -8,12 +10,24 @@ const int REQUEST = 0;
 const int RESPONSE = 1;
 const int NOTIFICATION = 2;
 
-class NeoVim {
-  NeoVim._()
-      : futureProcess = spawnServer(
+class NeoVim extends NeoVimInterface with ApiCalls {
+  NeoVim._();
+
+  /// Ensure consumers do not use a [NeoVim] instance until it is initialized.
+  static Future<NeoVim> asyncFactory() async {
+    final NeoVim instance = NeoVim._();
+    instance.process = await instance.futureProcess;
+    return instance;
+  }
+}
+
+// Only for use by mixins.
+abstract class NeoVimInterface {
+  NeoVimInterface()
+      : futureProcess = _spawnServer(
           <String>['--embed'],
           env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
-        ) {
+      ) {
     futureProcess.onError((Object error, StackTrace stacktrace) {
       throw 'Whoopsies!\n$error';
     });
@@ -28,13 +42,6 @@ class NeoVim {
         io.stdout.writeln(data);
       });
     });
-  }
-
-  // Ensure consumers do not use a [NeoVim] instance until 
-  static Future<NeoVim> asyncFactory() async {
-    final NeoVim instance = NeoVim._();
-    instance.process = await instance.futureProcess;
-    return instance;
   }
 
   static const String binary = 'nvim';
@@ -55,10 +62,19 @@ class NeoVim {
     return _nextMsgid - 1;
   }
 
-  final StreamController<String> logController = StreamController<String>(); // TODO use
+  final StreamController<String> _logController = StreamController<String>(); // TODO use
+  void printStatus(String message) {
+    _logController.add(message);
+  }
+  void printError(String message) {
+    _logController.add(message);
+  }
 
-  Future<Response> _sendRequest(
-      String method, List<String> params, io.IOSink sink) async {
+  Future<Response> sendRequest(
+    String method,
+    List<String> params,
+    io.IOSink sink,
+  ) async {
     final int msgid = nextMsgid;
     final Uint8List requestBytes = _buildRequest(msgid, method, params);
     final Completer<Response> completer = Completer<Response>();
@@ -66,11 +82,10 @@ class NeoVim {
     // must add binary data, not utf8 text
     sink.add(requestBytes);
     _responseCompleters[msgid] = completer;
-    await sink.flush();
+    await sink.flush(); // do we need to do this?
     return completer.future;
   }
 
-  // TODO should these be a future response?
   // TODO do params need to be List<Object?>?
   // [type, msgid, method, params]
   // https://github.com/msgpack-rpc/msgpack-rpc/blob/master/spec.md#request-message
@@ -126,12 +141,7 @@ class NeoVim {
     return response;
   }
 
-  /// Call nvim_get_api_info.
-  Future<Response> getApiInfo() async {
-    return _sendRequest('nvim_get_api_info', [], process.stdin);
-  }
-
-  static Future<io.Process> spawnServer(
+  static Future<io.Process> _spawnServer(
     List<String> args, {
     Map<String, String>? env,
   }) async {
