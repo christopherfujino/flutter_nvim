@@ -1,8 +1,9 @@
-import 'dart:async' show Completer, StreamController, StreamSubscription;
+import 'dart:async' show Completer;
 import 'dart:io' as io;
 import 'dart:typed_data' show Uint8List;
 
 import 'api_calls.dart' show ApiCalls;
+import 'logging.dart' show Logging;
 
 import 'package:messagepack/messagepack.dart' as msg;
 
@@ -10,8 +11,14 @@ const int REQUEST = 0;
 const int RESPONSE = 1;
 const int NOTIFICATION = 2;
 
-class NeoVim extends NeoVimInterface with ApiCalls {
-  NeoVim._();
+class NeoVim extends NeoVimInterface with ApiCalls, Logging {
+  NeoVim._() : super() {
+    for (final Initializer initializer in initializers) {
+      initializer(this);
+    }
+  }
+
+  static final List<Initializer> initializers = <Initializer>[];
 
   /// Ensure consumers do not use a [NeoVim] instance until it is initialized.
   static Future<NeoVim> asyncFactory() async {
@@ -21,6 +28,8 @@ class NeoVim extends NeoVimInterface with ApiCalls {
   }
 }
 
+typedef Initializer = void Function(NeoVim);
+
 // Only for use by mixins.
 abstract class NeoVimInterface {
   NeoVimInterface()
@@ -28,35 +37,24 @@ abstract class NeoVimInterface {
           <String>['--embed'],
           env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
       ) {
-    _logController.onListen = () {
-      _logsHaveListener = true;
-      for (final String message in _startupLogBuffer) {
-        print(message);
-      }
-    };
-    listen((String message) {
-      if (!_logsHaveListener) {
-        _startupLogBuffer.add(message);
-      } else {
-        print(message);
-      }
-    });
-
     futureProcess.onError((Object error, StackTrace stacktrace) {
       throw 'Whoopsies!\n$error';
     });
     futureProcess.then((io.Process process) {
       process.stdout.listen((List<int> data) {
-        printStatus('got some data!');
-        final response = _parseResponse(data);
-        printStatus(response.toString());
+        _parseResponse(data);
       });
       process.stderr.listen((List<int> data) {
         printError('got some error!');
         printError('data');
       });
     });
+
   }
+
+  // These implemented in [./logging.dart]
+  void printStatus(String message);
+  void printError(String message);
 
   static const String binary = 'nvim';
   final io.HttpClient client = io.HttpClient();
@@ -74,23 +72,6 @@ abstract class NeoVimInterface {
   int get nextMsgid {
     _nextMsgid += 1;
     return _nextMsgid - 1;
-  }
-
-  final StreamController<String> _logController = StreamController<String>();
-
-  final List<String> _startupLogBuffer = <String>[];
-  bool _logsHaveListener = false;
-
-  // The return value usually does not need to be used.
-  StreamSubscription listen(void Function(String) callback) {
-    return _logController.stream.listen(callback);
-  }
-
-  void printStatus(String message) {
-    _logController.add('$message\n');
-  }
-  void printError(String message) {
-    _logController.add('$message\n');
   }
 
   Future<Response> sendRequest(
@@ -133,6 +114,7 @@ abstract class NeoVimInterface {
     return packer.takeBytes();
   }
 
+  // Note return value probably not needed
   AbstractResponse _parseResponse(List<int> bytes) {
     final msg.Unpacker unpacker = msg.Unpacker.fromList(bytes);
     final List<Object?> messageList = unpacker.unpackList();
