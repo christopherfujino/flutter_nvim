@@ -125,7 +125,8 @@ abstract class NeoVimInterface {
       throw 'huh?! $type';
     }
     final int msgid = messageList[1] as int;
-    if (!_responseCompleters.containsKey(msgid)) {
+    final Completer<Response>? completer = _responseCompleters[msgid];
+    if (completer == null) {
       throw 'not expecting msgid $msgid!';
     }
     if (messageList[2] != null) {
@@ -141,7 +142,7 @@ abstract class NeoVimInterface {
       error: null,
       result: messageList[3],
     );
-    _responseCompleters[msgid]!.complete(response);
+    completer.complete(response);
 
     return response;
   }
