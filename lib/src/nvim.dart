@@ -3,7 +3,6 @@ import 'dart:io' as io;
 import 'dart:typed_data' show Uint8List;
 
 import 'api_calls.dart' show ApiCalls;
-import 'logging.dart' show Logging;
 
 import 'package:messagepack/messagepack.dart' as msg;
 
@@ -11,14 +10,8 @@ const int REQUEST = 0;
 const int RESPONSE = 1;
 const int NOTIFICATION = 2;
 
-class NeoVim extends NeoVimInterface with ApiCalls, Logging {
-  NeoVim._() : super() {
-    for (final Initializer initializer in initializers) {
-      initializer(this);
-    }
-  }
-
-  static final List<Initializer> initializers = <Initializer>[];
+class NeoVim extends NeoVimInterface with ApiCalls {
+  NeoVim._() : super();
 
   /// Ensure consumers do not use a [NeoVim] instance until it is initialized.
   static Future<NeoVim> asyncFactory() async {
@@ -42,19 +35,15 @@ abstract class NeoVimInterface {
     });
     futureProcess.then((io.Process process) {
       process.stdout.listen((List<int> data) {
+        print('got some data');
         _parseResponse(data);
       });
       process.stderr.listen((List<int> data) {
-        printError('got some error!');
-        printError('data');
+        print('got some error!');
+        print('data');
       });
     });
-
   }
-
-  // These implemented in [./logging.dart]
-  void printStatus(String message);
-  void printError(String message);
 
   static const String binary = 'nvim';
   final io.HttpClient client = io.HttpClient();
@@ -76,12 +65,13 @@ abstract class NeoVimInterface {
 
   Future<Response> sendRequest(
     String method,
-    List<String> params,
+    List<Object?> params,
     io.IOSink sink,
   ) async {
     final int msgid = nextMsgid;
     final Uint8List requestBytes = _buildRequest(msgid, method, params);
     final Completer<Response> completer = Completer<Response>();
+    print('sending message $msgid');
     // call server
     // must add binary data, not utf8 text
     sink.add(requestBytes);
@@ -93,7 +83,7 @@ abstract class NeoVimInterface {
   // TODO do params need to be List<Object?>?
   // [type, msgid, method, params]
   // https://github.com/msgpack-rpc/msgpack-rpc/blob/master/spec.md#request-message
-  Uint8List _buildRequest(int msgid, String method, List<String> params) {
+  Uint8List _buildRequest(int msgid, String method, List<Object?> params) {
     final msg.Packer packer = msg.Packer();
 
     // [type, msgid, method, params]
@@ -108,43 +98,53 @@ abstract class NeoVimInterface {
 
     // how to handle 0?
     packer.packListLength(params.length);
-    for (final String param in params) {
-      packer.packString(param);
+    for (final Object? param in params) {
+      _packObject(param, packer);
     }
     return packer.takeBytes();
   }
 
   // Note return value probably not needed
   AbstractResponse _parseResponse(List<int> bytes) {
-    final msg.Unpacker unpacker = msg.Unpacker.fromList(bytes);
-    final List<Object?> messageList = unpacker.unpackList();
-    final int type = messageList[0] as int;
-    if (type == NOTIFICATION) {
-      throw 'notification unimplemented';
-    } else if (type != RESPONSE) {
-      throw 'huh?! $type';
-    }
-    final int msgid = messageList[1] as int;
-    final Completer<Response>? completer = _responseCompleters[msgid];
-    if (completer == null) {
-      throw 'not expecting msgid $msgid!';
-    }
-    if (messageList[2] != null) {
-      throw RPCError.fromList(messageList[2]!);
-      //return Response(
-      //  msgid: msgid,
-      //  error: RPCError.fromList(messageList[2]!),
-      //  result: null, // either error or result will be null
-      //);
-    }
-    final response = Response(
-      msgid: msgid,
-      error: null,
-      result: messageList[3],
-    );
-    completer.complete(response);
+    try {
+      print('starting parse of response');
+      final msg.Unpacker unpacker = msg.Unpacker.fromList(bytes);
+      final List<Object?> messageList = unpacker.unpackList();
+      final int type = messageList[0] as int;
+      if (type == NOTIFICATION) {
+        throw 'notification unimplemented';
+      } else if (type != RESPONSE) {
+        throw 'huh?! $type';
+      }
+      final int msgid = messageList[1] as int;
+      print('parsing message $msgid');
+      final Completer<Response>? completer = _responseCompleters[msgid];
+      if (completer == null) {
+        throw 'not expecting msgid $msgid!';
+      }
+      if (messageList[2] != null) {
+        throw RPCError.fromList(messageList[2]!);
+        //return Response(
+        //  msgid: msgid,
+        //  error: RPCError.fromList(messageList[2]!),
+        //  result: null, // either error or result will be null
+        //);
+      }
+      final response = Response(
+          msgid: msgid,
+          error: null,
+          result: messageList[3],
+      );
+      completer.complete(response);
 
-    return response;
+      return response;
+    } on FormatException {
+      // TODO add debugging
+      bytes.forEach((int byte) {
+        io.stdout.write('${byte.toRadixString(16)} ');
+      });
+      rethrow;
+    }
   }
 
   static Future<io.Process> _spawnServer(
@@ -157,6 +157,22 @@ abstract class NeoVimInterface {
       environment: env,
       mode: io.ProcessStartMode.normal,
     );
+  }
+}
+
+void _packObject(Object? obj, msg.Packer packer) {
+  if (obj is String) {
+    packer.packString(obj);
+  } else if (obj is int) {
+    packer.packInt(obj);
+  } else if (obj is Map) {
+    packer.packMapLength(obj.length);
+    for (final MapEntry<Object?, Object?> entry in obj.entries) {
+      _packObject(entry.key, packer);
+      _packObject(entry.value, packer);
+    }
+  } else {
+    throw Exception('do not know how to pack a ${obj.runtimeType}');
   }
 }
 
