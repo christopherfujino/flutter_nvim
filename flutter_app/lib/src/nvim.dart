@@ -28,7 +28,7 @@ abstract class NeoVimInterface {
   NeoVimInterface()
       : futureProcess = _spawnServer(
           <String>['--embed'],
-          env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
+      //    env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
       ) {
     futureProcess.onError((Object error, StackTrace stacktrace) {
       throw 'Whoopsies!\n$error';
@@ -123,6 +123,7 @@ abstract class NeoVimInterface {
         throw 'not expecting msgid $msgid!';
       }
       if (messageList[2] != null) {
+        print('hit!');
         throw RPCError.fromList(messageList[2]!);
         //return Response(
         //  msgid: msgid,
@@ -140,9 +141,12 @@ abstract class NeoVimInterface {
       return response;
     } on FormatException {
       // TODO add debugging
-      bytes.forEach((int byte) {
-        io.stdout.write('${byte.toRadixString(16)} ');
-      });
+      final StringBuffer buffer = StringBuffer();
+      buffer.write('[');
+      buffer.write(bytes.join(', '));
+      buffer.write(']');
+      final io.File file = io.File('deleteme.txt')..writeAsStringSync(buffer.toString());
+      print('wrote file ${file.path} to disk');
       rethrow;
     }
   }

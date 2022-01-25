@@ -7,7 +7,7 @@ Future<void> main(List<String> args) async {
   io.stdout.writeln('spawned nvim with PID ${process.pid}');
   print(await nvim.getApiInfo());
 
-  print(await nvim.uiAttach(200, 200));
+  print(await nvim.uiAttach(5, 5));
 
   // note this will never exit unless we explicitly kill the child
   final int code = await process.exitCode;
