@@ -98,10 +98,10 @@ packages:
   messagepack:
     dependency: "direct main"
     description:
-      name: messagepack
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.2.1"
+      path: "../messagepack"
+      relative: true
+    source: path
+    version: "0.2.0"
   meta:
     dependency: transitive
     description:

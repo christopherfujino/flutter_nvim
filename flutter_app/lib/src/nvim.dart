@@ -40,7 +40,7 @@ abstract class NeoVimInterface {
       });
       process.stderr.listen((List<int> data) {
         print('got some error!');
-        print('data');
+        print(data);
       });
     });
   }

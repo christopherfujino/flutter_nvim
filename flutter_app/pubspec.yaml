@@ -29,7 +29,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  messagepack: 0.2.1
+  messagepack:
+    path: ../messagepack
 
 
   # The following adds the Cupertino Icons font to your application.
