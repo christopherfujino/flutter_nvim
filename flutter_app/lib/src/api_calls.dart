@@ -11,9 +11,10 @@ mixin ApiCalls on NeoVimInterface {
 
   Future<Response> uiAttach(int width, int height) async {
     print('about to send request for nvim_ui_attach');
+    final options = {};
     final Response response = await sendRequest(
       'nvim_ui_attach',
-      [width, height, {}],
+      [width, height, options],
       process.stdin,
     );
     print('received response from server');
