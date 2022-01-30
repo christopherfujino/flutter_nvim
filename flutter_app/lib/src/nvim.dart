@@ -104,6 +104,32 @@ abstract class NeoVimInterface {
     return packer.takeBytes();
   }
 
+  Notification _parseNotification(List<int> bytes, List<Object?> messageList) {
+    final int msgid = messageList[1] as int;
+    print('parsing message $msgid');
+    final Completer<Response>? completer = _responseCompleters[msgid];
+    if (completer == null) {
+      throw 'not expecting msgid $msgid!';
+    }
+    if (messageList[2] != null) {
+      print('hit!');
+      throw RPCError.fromList(messageList[2]!);
+      //return Response(
+      //  msgid: msgid,
+      //  error: RPCError.fromList(messageList[2]!),
+      //  result: null, // either error or result will be null
+      //);
+    }
+    final response = Notification(
+        msgid: msgid,
+        error: null,
+        result: messageList[3],
+    );
+    completer.complete(response);
+
+    return response;
+  }
+
   // Note return value probably not needed
   AbstractResponse _parseResponse(List<int> bytes) {
     try {
@@ -111,34 +137,36 @@ abstract class NeoVimInterface {
       final msg.Unpacker unpacker = msg.Unpacker.fromList(bytes);
       final List<Object?> messageList = unpacker.unpackList();
       final int type = messageList[0] as int;
-      if (type == NOTIFICATION) {
-        throw 'notification unimplemented';
-      } else if (type != RESPONSE) {
-        throw 'huh?! $type';
-      }
-      final int msgid = messageList[1] as int;
-      print('parsing message $msgid');
-      final Completer<Response>? completer = _responseCompleters[msgid];
-      if (completer == null) {
-        throw 'not expecting msgid $msgid!';
-      }
-      if (messageList[2] != null) {
-        print('hit!');
-        throw RPCError.fromList(messageList[2]!);
-        //return Response(
-        //  msgid: msgid,
-        //  error: RPCError.fromList(messageList[2]!),
-        //  result: null, // either error or result will be null
-        //);
-      }
-      final response = Response(
-          msgid: msgid,
-          error: null,
-          result: messageList[3],
-      );
-      completer.complete(response);
+      switch (type) {
+        case NOTIFICATION:
+          return _parseNotification(bytes, unpacker);
+        case RESPONSE:
+          final int msgid = messageList[1] as int;
+          print('parsing message $msgid');
+          final Completer<Response>? completer = _responseCompleters[msgid];
+          if (completer == null) {
+            throw 'not expecting msgid $msgid!';
+          }
+          if (messageList[2] != null) {
+            print('hit!');
+            throw RPCError.fromList(messageList[2]!);
+            //return Response(
+            //  msgid: msgid,
+            //  error: RPCError.fromList(messageList[2]!),
+            //  result: null, // either error or result will be null
+            //);
+          }
+          final response = Response(
+              msgid: msgid,
+              error: null,
+              result: messageList[3],
+          );
+          completer.complete(response);
 
-      return response;
+          return response;
+        default:
+          throw 'huh?! $type';
+      }
     } on FormatException {
       // TODO add debugging
       final StringBuffer buffer = StringBuffer();
@@ -182,9 +210,7 @@ void _packObject(Object? obj, msg.Packer packer) {
 
 /// One of [Response] or [Notification].
 abstract class AbstractResponse {
-  const AbstractResponse(this.type);
-
-  final int type;
+  const AbstractResponse();
 }
 
 class Response extends AbstractResponse {
@@ -192,7 +218,7 @@ class Response extends AbstractResponse {
     required this.msgid,
     required this.error,
     required this.result,
-  }) : super(RESPONSE);
+  });
 
   final int msgid;
   final Object? error;
@@ -200,10 +226,34 @@ class Response extends AbstractResponse {
 
   @override
   String toString() => '''
-msgid: $msgid
-error: $error
-result: $result
+Response:
+\tmsgid: $msgid
+\terror: $error
+\tresult: $result
 ''';
+}
+
+/// Notification Message
+///
+/// The notification message is a three elements array shown below, packed in MessagePack format.
+///
+/// [type, method, params]
+///
+/// type
+/// Must be two (integer). Two means that this message is the "Notification" message.
+///
+/// method
+/// A string, which represents the method name.
+///
+/// params
+/// An array of the function arguments. The elements of this array are arbitrary objects.
+class Notification extends AbstractResponse {
+  const Notification(this.method, this.params);
+
+  /// A string, which represents the method name.
+  final String method;
+
+  final List<Object?> params;
 }
 
 // :help nvim_error_event
