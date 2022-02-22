@@ -105,32 +105,15 @@ abstract class NeoVimInterface {
   }
 
   Notification _parseNotification(List<int> bytes, List<Object?> messageList) {
-    final int msgid = messageList[1] as int;
-    print('parsing message $msgid');
-    final Completer<Response>? completer = _responseCompleters[msgid];
-    if (completer == null) {
-      throw 'not expecting msgid $msgid!';
-    }
-    if (messageList[2] != null) {
-      print('hit!');
-      throw RPCError.fromList(messageList[2]!);
-      //return Response(
-      //  msgid: msgid,
-      //  error: RPCError.fromList(messageList[2]!),
-      //  result: null, // either error or result will be null
-      //);
-    }
-    final response = Notification(
-        msgid: msgid,
-        error: null,
-        result: messageList[3],
-    );
-    completer.complete(response);
-
-    return response;
+    print('parsing notification');
+    final int type = messageList[0] as int;
+    assert(type == NOTIFICATION);
+    final String method = messageList[1] as String;
+    final List<Object?> params = messageList[2] as List<Object?>;
+    return Notification(method, params);
   }
 
-  // Note return value probably not needed
+  // Note return value not needed for responses, but are for notifications
   AbstractResponse _parseResponse(List<int> bytes) {
     try {
       print('starting parse of response');
@@ -139,7 +122,7 @@ abstract class NeoVimInterface {
       final int type = messageList[0] as int;
       switch (type) {
         case NOTIFICATION:
-          return _parseNotification(bytes, unpacker);
+          return _parseNotification(bytes, messageList);
         case RESPONSE:
           final int msgid = messageList[1] as int;
           print('parsing message $msgid');
