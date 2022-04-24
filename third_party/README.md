@@ -6,7 +6,7 @@ information.
 
 ## Dev Setup
 
-Run the script in ../tools/git-submodule-init.sh to ensure all Git submodules
+Run the script in ../tools/git-submodule-init.dart to ensure all Git submodules
 are installed and up to date locally.
 
 ### Neovim
