@@ -2,14 +2,22 @@ import 'dart:io' as io;
 
 /// Asynchronously run a [Process] with inherited STDIO.
 Future<void> stream(
-  String executable, {
-  List<String> args = const <String>[],
+  List<String> command, {
   Map<String, String>? env,
   String? workingDirectory,
 }) async {
-  final process = await io.Process.start(
-    executable,
-    args,
+  final String message = <String>[
+    'Spawning subprocess "${command.join(' ')}"',
+    if (workingDirectory != null)
+      ' in "$workingDirectory"',
+    if (env != null)
+      ' with env $env',
+    '...',
+  ].join();
+  print(message);
+  final io.Process process = await io.Process.start(
+    command.first,
+    command.skip(1).toList(),
     mode: io.ProcessStartMode.inheritStdio,
     environment: env,
     workingDirectory: workingDirectory,
@@ -17,7 +25,7 @@ Future<void> stream(
   final exitCode = await process.exitCode;
   if (exitCode != 0) {
     throw Exception(
-      'Command "$executable ${args.join(' ')}" failed with code $exitCode',
+      'Command "${command.join(' ')}" failed with code $exitCode',
     );
   }
 }
@@ -34,19 +42,11 @@ io.Directory get repoRoot {
       .parent;
 }
 
-/// Synchronously verify that a [io.File] exists.
-///
-/// Will throw an [Exception] if the file does not exist.
-void checkFile(io.File file) {
-  if(!file.existsSync()) {
-    throw Exception('The file ${file.absolute.path} does not exist!');
-  }
-}
-
 /// Synchronously verify that a path exists on disk.
 ///
 /// Will throw an [Exception] if the path does not exist.
 void checkPath(String path) {
+  print('checking the existence of $path...');
   final type = io.FileSystemEntity.typeSync(path);
   final io.FileSystemEntity entity;
   if (type == io.FileSystemEntityType.file) {
@@ -63,4 +63,19 @@ void checkPath(String path) {
 
 String joinPath(List<String> parts) {
   return parts.join(io.Platform.pathSeparator);
+}
+
+/// Run a [List] of commands in sequence.
+Future<void> sequence(List<String> commands) async {
+  for (final String command in commands) {
+    await stream(command.split(' '));
+  }
+}
+
+/// Run a [List] of commands in parallel.
+Future<void> parallel(List<String> commands) async {
+  final Iterable<Future<void>> futures = commands.map((String command) {
+    return stream(command.split(' '));
+  });
+  await Future.wait(futures);
 }
