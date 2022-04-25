@@ -49,6 +49,7 @@ class Scanner {
   final List<Token> _tokenList = <Token>[];
 
   int _index = 0;
+  int _line = 1;
 
   // TODO figure out unicode
   Future<List<Token>> scan() async {

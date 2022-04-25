@@ -47,7 +47,6 @@ class Parser {
     _consume(TokenType.target);
     final StringToken name = _consume(TokenType.identifier) as StringToken;
 
-    // TODO interesting bits
     _consume(TokenType.openCurlyBracket);
     final List<Statement> statements = <Statement>[];
     Statement? statement = _parseStatement();
@@ -78,7 +77,7 @@ class Parser {
       return null;
     }
     if (_currentToken!.type != TokenType.semicolon) {
-      return null;
+      throw ParseError('Parse error: at ${_currentToken}');
     }
     return BareStatement(expression: expression);
   }
@@ -142,3 +141,14 @@ class BareStatement extends Statement {
 }
 
 abstract class Expression {}
+
+class CallExpression extends Expression {}
+
+class ParseError implements Exception {
+  const ParseError(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
