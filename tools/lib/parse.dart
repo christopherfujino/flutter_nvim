@@ -1,18 +1,9 @@
-import 'dart:io' as io;
-
 import 'scanner.dart';
 
 class Config {
   const Config(this.declarations);
 
   final List declarations;
-}
-
-Future<Config> parse(path) async {
-  final io.File sourceFile = io.File(path);
-  final String source = await sourceFile.readAsString();
-  final List<Token> tokenList = await Scanner(source).scan();
-  return await Parser(tokenList).parseConfig();
 }
 
 class Parser {
@@ -27,7 +18,7 @@ class Parser {
     return tokenList[_index];
   }
 
-  Future<Config> parseConfig() async {
+  Future<Config> parse() async {
     final List declarations = [];
     Declaration? currentDeclaration = _parseDeclaration();
     while (currentDeclaration != null) {
