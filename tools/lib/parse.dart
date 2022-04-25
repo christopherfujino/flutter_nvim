@@ -37,7 +37,7 @@ class Parser {
     if (currentToken.type == TokenType.target) {
       return _parseTargetDeclaration();
     }
-    throw Exception('Unknown declaration type ${currentToken.type.name}!');
+    throw ParseError('[${currentToken.line}:${currentToken.char}] Unknown declaration type ${currentToken.type.name}!');
   }
 
   /// Parse a [TargetDeclaration].

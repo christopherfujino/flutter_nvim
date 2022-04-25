@@ -26,9 +26,13 @@ enum TokenType {
 class Token {
   Token({
     required this.type,
+    required this.line,
+    required this.char,
   });
 
   final TokenType type;
+  final int line;
+  final int char;
 
   String toString() => type.name;
 }
@@ -37,6 +41,8 @@ class StringToken extends Token {
   StringToken({
     required super.type,
     required this.value,
+    required super.line,
+    required super.char,
   });
 
   final String value;
@@ -50,6 +56,8 @@ class Scanner {
 
   int _index = 0;
   int _line = 1;
+  int _lastNewlineIndex = 0;
+  int get _char => _index - _lastNewlineIndex;
 
   // TODO figure out unicode
   Future<List<Token>> scan() async {
@@ -96,7 +104,13 @@ class Scanner {
     for (final keyword in kKeywords) {
       if (rest.startsWith(keyword)) {
         _index += keyword.length;
-        _tokenList.add(Token(type: TokenType.target));
+        _tokenList.add(
+          Token(
+            type: TokenType.target,
+            line: _line,
+            char: _char,
+          ),
+        );
         return true;
       }
     }
@@ -118,6 +132,8 @@ class Scanner {
           type: TokenType.stringLiteral,
           // store the sub-group, excluding quotes
           value: match.group(1)!,
+          line: _line,
+          char: _char,
         ),
       );
       return true;
@@ -135,7 +151,12 @@ class Scanner {
       final String stringMatch = match.group(0)!;
       _index += stringMatch.length;
       _tokenList.add(
-        StringToken(type: TokenType.identifier, value: stringMatch),
+        StringToken(
+          type: TokenType.identifier,
+          value: stringMatch,
+          line: _line,
+          char: _char,
+        ),
       );
       return true;
     }
@@ -146,8 +167,12 @@ class Scanner {
     switch (source[_index]) {
       case ' ':
       case '\t':
-      case '\n':
       case '\r':
+        _index += 1;
+        return true;
+      case '\n':
+        _lastNewlineIndex = _index;
+        _line += 1;
         _index += 1;
         return true;
       default:
@@ -159,27 +184,63 @@ class Scanner {
     switch (source[_index]) {
       case '{':
         _index += 1;
-        _tokenList.add(Token(type: TokenType.openCurlyBracket));
+        _tokenList.add(
+          Token(
+            type: TokenType.openCurlyBracket,
+            line: _line,
+            char: _char,
+          ),
+        );
         return true;
       case '}':
         _index += 1;
-        _tokenList.add(Token(type: TokenType.closeCurlyBracket));
+        _tokenList.add(
+          Token(
+            type: TokenType.closeCurlyBracket,
+            line: _line,
+            char: _char,
+          ),
+        );
         return true;
       case '[':
         _index += 1;
-        _tokenList.add(Token(type: TokenType.openSquareBracket));
+        _tokenList.add(
+          Token(
+            type: TokenType.openSquareBracket,
+            line: _line,
+            char: _char,
+          ),
+        );
         return true;
       case ']':
         _index += 1;
-        _tokenList.add(Token(type: TokenType.closeSquareBracket));
+        _tokenList.add(
+          Token(
+            type: TokenType.closeSquareBracket,
+            line: _line,
+            char: _char,
+          ),
+        );
         return true;
       case '(':
         _index += 1;
-        _tokenList.add(Token(type: TokenType.openParen));
+        _tokenList.add(
+          Token(
+            type: TokenType.openParen,
+            line: _line,
+            char: _char,
+          ),
+        );
         return true;
       case ')':
         _index += 1;
-        _tokenList.add(Token(type: TokenType.closeParen));
+        _tokenList.add(
+          Token(
+            type: TokenType.closeParen,
+            line: _line,
+            char: _char,
+          ),
+        );
         return true;
       default:
         return false;
@@ -190,11 +251,23 @@ class Scanner {
     switch (source[_index]) {
       case ',':
         _index += 1;
-        _tokenList.add(Token(type: TokenType.comma));
+        _tokenList.add(
+          Token(
+            type: TokenType.comma,
+            line: _line,
+            char: _char,
+          ),
+        );
         return true;
       case ';':
         _index += 1;
-        _tokenList.add(Token(type: TokenType.semicolon));
+        _tokenList.add(
+          Token(
+            type: TokenType.semicolon,
+            line: _line,
+            char: _char,
+          ),
+        );
         return true;
     }
 
