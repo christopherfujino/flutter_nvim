@@ -7,9 +7,14 @@ class Config {
 }
 
 class Parser {
-  Parser(this.tokenList);
+  Parser({
+    required this.tokenList,
+    required this.source,
+  });
 
   final List<Token> tokenList;
+  final List<String> source;
+
   int _index = 0;
   Token? get _currentToken {
     if (_index >= tokenList.length) {
