@@ -1,0 +1,35 @@
+target main {
+  const deps = [packages];
+}
+
+target packages {
+  const deps = [compileNeovim];
+
+  function context(ctx) {
+    ctx.cwd += "flutter_app";
+  }
+
+  function build() {
+    run("dart pub get");
+  }
+}
+
+target compileNeovim {
+  const deps = [submodules];
+
+  function context(ctx) {
+    ctx.cwd += "third_party" + "neovim";
+    ctx.env += {"CMAKE_BUILD_TYPE": "RelWithDebInfo"};
+  }
+
+  function build() {
+    # TODO
+  }
+}
+
+target submodules {
+  function build() {
+    run("git submodule init");
+    run("git submodule update");
+  }
+}

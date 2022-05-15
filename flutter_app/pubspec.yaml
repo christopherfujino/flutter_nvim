@@ -30,7 +30,7 @@ dependencies:
   flutter:
     sdk: flutter
   messagepack:
-    path: ../messagepack
+    path: ../third_party/messagepack
 
 
   # The following adds the Cupertino Icons font to your application.
