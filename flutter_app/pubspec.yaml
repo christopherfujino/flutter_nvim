@@ -29,8 +29,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  messagepack:
-    path: ../third_party/messagepack
+  dart_nvim:
+    path: ../dart_nvim/
 
 
   # The following adds the Cupertino Icons font to your application.

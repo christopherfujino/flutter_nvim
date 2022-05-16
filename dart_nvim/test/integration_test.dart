@@ -1,8 +1,7 @@
 import 'dart:io' as io;
 
-import 'package:flutter_nvim/src/nvim.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:messagepack/messagepack.dart';
+import 'package:dart_nvim/src/nvim.dart';
+import 'package:test/test.dart';
 
 
 void main() {

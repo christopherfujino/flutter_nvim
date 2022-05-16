@@ -4,3 +4,6 @@
 [submodule "third_party/neovim"]
 	path = third_party/neovim
 	url = git@github.com:neovim/neovim.git
+[submodule "third_party/msgpack-spec"]
+	path = third_party/msgpack-spec
+	url = git@github.com:msgpack/msgpack.git

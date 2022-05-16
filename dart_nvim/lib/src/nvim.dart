@@ -1,8 +1,9 @@
-import 'dart:async' show Completer;
+import 'dart:async' show unawaited, Completer;
 import 'dart:io' as io;
 import 'dart:typed_data' show Uint8List;
 
 import 'api_calls.dart' show ApiCalls;
+import 'events.dart' show Events;
 
 import 'package:messagepack/messagepack.dart' as msg;
 
@@ -10,7 +11,7 @@ const int REQUEST = 0;
 const int RESPONSE = 1;
 const int NOTIFICATION = 2;
 
-class NeoVim extends NeoVimInterface with ApiCalls {
+class NeoVim extends NeoVimInterface with ApiCalls, Events {
   NeoVim._() : super();
 
   /// Ensure consumers do not use a [NeoVim] instance until it is initialized.
@@ -28,8 +29,8 @@ abstract class NeoVimInterface {
   NeoVimInterface()
       : futureProcess = _spawnServer(
           <String>['--embed'],
-      //    env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
-      ) {
+          //    env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
+        ) {
     futureProcess.onError((Object error, StackTrace stacktrace) {
       throw 'Whoopsies!\n$error';
     });
@@ -71,12 +72,11 @@ abstract class NeoVimInterface {
     final int msgid = nextMsgid;
     final Uint8List requestBytes = _buildRequest(msgid, method, params);
     final Completer<Response> completer = Completer<Response>();
-    print('sending message $msgid');
     // call server
     // must add binary data, not utf8 text
     sink.add(requestBytes);
     _responseCompleters[msgid] = completer;
-    await sink.flush(); // do we need to do this?
+    await sink.flush(); // TODO do we need to do this?
     return completer.future;
   }
 
@@ -105,33 +105,35 @@ abstract class NeoVimInterface {
   }
 
   Notification _parseNotification(List<int> bytes, List<Object?> messageList) {
-    print('parsing notification');
     final int type = messageList[0] as int;
     assert(type == NOTIFICATION);
     final String method = messageList[1] as String;
     final List<Object?> params = messageList[2] as List<Object?>;
-    return Notification(method, params);
+    // TODO just directly return this [Notification]
+    final Notification notification = Notification(method, params);
+    //final io.File redrawBin = io.File('/home/fujino/git/flutter_nvim/dart_nvim/test/test_data/redraw_message.bin');
+    //redrawBin.writeAsBytesSync(bytes);
+    return notification;
   }
 
-  // Note return value not needed for responses, but are for notifications
-  AbstractResponse _parseResponse(List<int> bytes) {
+  Future<void> handleNotification(Notification notification);
+
+  void _parseResponse(List<int> bytes) {
     try {
-      print('starting parse of response');
       final msg.Unpacker unpacker = msg.Unpacker.fromList(bytes);
       final List<Object?> messageList = unpacker.unpackList();
       final int type = messageList[0] as int;
       switch (type) {
         case NOTIFICATION:
-          return _parseNotification(bytes, messageList);
+          unawaited(handleNotification(_parseNotification(bytes, messageList)));
+          return;
         case RESPONSE:
           final int msgid = messageList[1] as int;
-          print('parsing message $msgid');
           final Completer<Response>? completer = _responseCompleters[msgid];
           if (completer == null) {
             throw 'not expecting msgid $msgid!';
           }
           if (messageList[2] != null) {
-            print('hit!');
             throw RPCError.fromList(messageList[2]!);
             //return Response(
             //  msgid: msgid,
@@ -140,23 +142,22 @@ abstract class NeoVimInterface {
             //);
           }
           final response = Response(
-              msgid: msgid,
-              error: null,
-              result: messageList[3],
+            msgid: msgid,
+            error: null,
+            result: messageList[3],
           );
           completer.complete(response);
-
-          return response;
+          return;
         default:
           throw 'huh?! $type';
       }
     } on FormatException {
-      // TODO add debugging
       final StringBuffer buffer = StringBuffer();
       buffer.write('[');
       buffer.write(bytes.join(', '));
       buffer.write(']');
-      final io.File file = io.File('deleteme.txt')..writeAsStringSync(buffer.toString());
+      final io.File file = io.File('deleteme.txt')
+        ..writeAsStringSync(buffer.toString());
       print('wrote file ${file.path} to disk');
       rethrow;
     }
@@ -186,6 +187,8 @@ void _packObject(Object? obj, msg.Packer packer) {
       _packObject(entry.key, packer);
       _packObject(entry.value, packer);
     }
+  } else if (obj is bool) {
+    packer.packBool(obj);
   } else {
     throw Exception('do not know how to pack a ${obj.runtimeType}');
   }
@@ -237,6 +240,9 @@ class Notification extends AbstractResponse {
   final String method;
 
   final List<Object?> params;
+
+  @override
+  String toString() => '$method: [${params.join(', ')}]';
 }
 
 // :help nvim_error_event
