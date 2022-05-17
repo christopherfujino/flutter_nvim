@@ -6,17 +6,19 @@ import 'api_calls.dart' show ApiCalls;
 import 'events.dart' show Events;
 
 import 'package:messagepack/messagepack.dart' as msg;
+import 'package:meta/meta.dart';
 
 const int REQUEST = 0;
 const int RESPONSE = 1;
 const int NOTIFICATION = 2;
 
 class NeoVim extends NeoVimInterface with ApiCalls, Events {
-  NeoVim._() : super();
+  @visibleForTesting
+  NeoVim() : super();
 
   /// Ensure consumers do not use a [NeoVim] instance until it is initialized.
   static Future<NeoVim> asyncFactory() async {
-    final NeoVim instance = NeoVim._();
+    final NeoVim instance = NeoVim();
     instance.process = await instance.futureProcess;
     return instance;
   }
@@ -28,7 +30,7 @@ typedef Initializer = void Function(NeoVim);
 abstract class NeoVimInterface {
   NeoVimInterface()
       : futureProcess = _spawnServer(
-          <String>['--embed'],
+          <String>['-u', 'NONE', '--embed'],
           //    env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
         ) {
     futureProcess.onError((Object error, StackTrace stacktrace) {
