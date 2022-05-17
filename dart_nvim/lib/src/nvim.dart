@@ -1,4 +1,5 @@
-import 'dart:async' show unawaited, Completer;
+import 'dart:async';
+import 'dart:convert' show utf8;
 import 'dart:io' as io;
 import 'dart:typed_data' show Uint8List;
 
@@ -37,13 +38,13 @@ abstract class NeoVimInterface {
       throw 'Whoopsies!\n$error';
     });
     futureProcess.then((io.Process process) {
-      process.stdout.listen((List<int> data) {
+      _stdoutSub = process.stdout.listen((List<int> data) {
         print('got some data');
         _parseResponse(data);
       });
-      process.stderr.listen((List<int> data) {
+      _stderrSub = process.stderr.listen((List<int> data) {
         print('got some error!');
-        print(data);
+        print(utf8.decode(data));
       });
     });
   }
@@ -55,10 +56,19 @@ abstract class NeoVimInterface {
 
   final Future<io.Process> futureProcess;
 
+  late final StreamSubscription<List<int>> _stdoutSub;
+  late final StreamSubscription<List<int>> _stderrSub;
+
   // As a performance optimization, this is populated once [futureProcess]
   // finishes. Consumers MUST instantiate [NeoVim] objects via [asyncFactory],
   // to ensure [process] is non-null.
   late final io.Process process;
+
+  void dispose() {
+    _stdoutSub.cancel();
+    _stderrSub.cancel();
+    process.kill();
+  }
 
   int _nextMsgid = 0;
   int get nextMsgid {

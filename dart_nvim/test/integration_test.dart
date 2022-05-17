@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dart_nvim/src/api_calls.dart';
+import 'package:dart_nvim/src/events.dart';
 import 'package:dart_nvim/src/nvim.dart';
 import 'package:test/test.dart';
 
@@ -12,7 +13,7 @@ void main() {
   });
 
   tearDownAll(() {
-    nvim.process.kill();
+    nvim.dispose();
   });
 
   test('getApiInfo()', () async {
@@ -24,19 +25,22 @@ void main() {
   test('uiAttach()', () async {
     final Response response = await nvim.uiAttach(500, 500);
     expect(response.error, isNull);
-    final Notification notification = await nvim.notifications.first;
-    expect(notification.method, 'redraw');
-    expect(notification.params, 'foo');
+    final Event redraw = await nvim.notifications.first;
+    expect(redraw.runtimeType, RedrawEvent);
+    expect((redraw as RedrawEvent).gridResize.width, 500);
+    expect(redraw.gridResize.height, 500);
+    expect(redraw.gridResize.grid, 1);
   });
 }
 
 class TestNeoVim extends NeoVim {
-  final StreamController<Notification> _notificationController = StreamController<Notification>();
-  Stream<Notification> get notifications => _notificationController.stream;
+  final StreamController<Event> _notificationController = StreamController<Event>();
+  Stream<Event> get notifications => _notificationController.stream;
 
   @override
-  Future<void> handleNotification(Notification notification) async {
-    _notificationController.add(notification);
-    return super.handleNotification(notification);
+  Future<Event> handleNotification(Notification notification) async {
+    final Event event = await super.handleNotification(notification);
+    _notificationController.add(event);
+    return event;
   }
 }
