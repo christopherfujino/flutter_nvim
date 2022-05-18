@@ -4,23 +4,23 @@ import 'nvim.dart';
 mixin ApiCalls on NeoVimInterface {
   /// Call nvim_get_api_info.
   Future<ApiInfoResponse> getApiInfo() async {
-    print('about to send request for nvim_get_api_info');
+    logger.printTrace('about to send request for nvim_get_api_info');
     final Response response =
-        await sendRequest('nvim_get_api_info', [], process.stdin);
+        await sendRequest('nvim_get_api_info', [], (await process).stdin);
     return ApiInfoResponse(response);
   }
 
   Future<Response> uiAttach(int width, int height) async {
-    print('about to send request for nvim_ui_attach');
+    logger.printTrace('about to send request for nvim_ui_attach');
     final Map<String, Object?> options = <String, Object?>{
       'ext_linegrid': true,
     }; // TODO implement options
     final Response response = await sendRequest(
       'nvim_ui_attach',
       [width, height, options],
-      process.stdin,
+      (await process).stdin,
     );
-    print('received response from server');
+    logger.printTrace('received response from server');
     return response;
   }
 }

@@ -1,15 +1,13 @@
-import 'dart:async';
-
 import 'package:dart_nvim/src/api_calls.dart';
+import 'package:dart_nvim/src/common.dart';
 import 'package:dart_nvim/src/events.dart';
 import 'package:dart_nvim/src/nvim.dart';
 import 'package:test/test.dart';
 
 void main() {
-  late final TestNeoVim nvim;
+  late final NeoVim nvim;
   setUpAll(() async {
-    nvim = TestNeoVim();
-    nvim.process = await nvim.futureProcess;
+    nvim = NeoVim(logger: BufferLogger());
   });
 
   tearDownAll(() {
@@ -31,16 +29,4 @@ void main() {
     expect(redraw.gridResize.height, 500);
     expect(redraw.gridResize.grid, 1);
   });
-}
-
-class TestNeoVim extends NeoVim {
-  final StreamController<Event> _notificationController = StreamController<Event>();
-  Stream<Event> get notifications => _notificationController.stream;
-
-  @override
-  Future<Event> handleNotification(Notification notification) async {
-    final Event event = await super.handleNotification(notification);
-    _notificationController.add(event);
-    return event;
-  }
 }

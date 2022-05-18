@@ -4,47 +4,37 @@ import 'dart:io' as io;
 import 'dart:typed_data' show Uint8List;
 
 import 'api_calls.dart' show ApiCalls;
-import 'events.dart' show Events;
+import 'common.dart';
+import 'events.dart';
 
 import 'package:messagepack/messagepack.dart' as msg;
-import 'package:meta/meta.dart';
 
 const int REQUEST = 0;
 const int RESPONSE = 1;
 const int NOTIFICATION = 2;
 
 class NeoVim extends NeoVimInterface with ApiCalls, Events {
-  @visibleForTesting
-  NeoVim() : super();
-
-  /// Ensure consumers do not use a [NeoVim] instance until it is initialized.
-  static Future<NeoVim> asyncFactory() async {
-    final NeoVim instance = NeoVim();
-    instance.process = await instance.futureProcess;
-    return instance;
-  }
+  NeoVim({required super.logger});
 }
-
-typedef Initializer = void Function(NeoVim);
 
 // Only for use by mixins.
 abstract class NeoVimInterface {
-  NeoVimInterface()
-      : futureProcess = _spawnServer(
+  NeoVimInterface({required this.logger})
+      : process = _spawnServer(
           <String>['-u', 'NONE', '--embed'],
           //    env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
         ) {
-    futureProcess.onError((Object error, StackTrace stacktrace) {
+    process.onError((Object error, StackTrace stacktrace) {
       throw 'Whoopsies!\n$error';
     });
-    futureProcess.then((io.Process process) {
+    process.then((io.Process process) {
       _stdoutSub = process.stdout.listen((List<int> data) {
-        print('got some data');
+        logger.printTrace('got some data');
         _parseResponse(data);
       });
       _stderrSub = process.stderr.listen((List<int> data) {
-        print('got some error!');
-        print(utf8.decode(data));
+        logger.printError('got some error!');
+        logger.printError(utf8.decode(data));
       });
     });
   }
@@ -54,20 +44,26 @@ abstract class NeoVimInterface {
   final Map<int, Completer<Response>> _responseCompleters =
       <int, Completer<Response>>{};
 
-  final Future<io.Process> futureProcess;
+  final Future<io.Process> process;
 
   late final StreamSubscription<List<int>> _stdoutSub;
   late final StreamSubscription<List<int>> _stderrSub;
 
-  // As a performance optimization, this is populated once [futureProcess]
-  // finishes. Consumers MUST instantiate [NeoVim] objects via [asyncFactory],
-  // to ensure [process] is non-null.
-  late final io.Process process;
+  final StreamController<Event> notificationController =
+      StreamController<Event>();
+  Stream<Event> get notifications => notificationController.stream;
 
-  void dispose() {
-    _stdoutSub.cancel();
-    _stderrSub.cancel();
-    process.kill();
+  final Logger logger;
+
+  Future<void> dispose() async {
+    // These should be cancelled before notificationController is closed
+    await Future.wait(<Future<void>>[
+      _stdoutSub.cancel(),
+      _stderrSub.cancel(),
+    ]);
+    await notificationController.close();
+    (await process).kill();
+    logger.printTrace('disposed nvim instance');
   }
 
   int _nextMsgid = 0;
@@ -170,7 +166,7 @@ abstract class NeoVimInterface {
       buffer.write(']');
       final io.File file = io.File('deleteme.txt')
         ..writeAsStringSync(buffer.toString());
-      print('wrote file ${file.path} to disk');
+      logger.printTrace('wrote file ${file.path} to disk');
       rethrow;
     }
   }
