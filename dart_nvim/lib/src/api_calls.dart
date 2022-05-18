@@ -20,7 +20,6 @@ mixin ApiCalls on NeoVimInterface {
       [width, height, options],
       (await process).stdin,
     );
-    logger.printTrace('received response from server');
     return response;
   }
 }

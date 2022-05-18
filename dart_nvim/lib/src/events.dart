@@ -2,18 +2,14 @@ import 'nvim.dart' show Notification, NeoVimInterface;
 
 mixin Events on NeoVimInterface {
   Future<Event> handleNotification(Notification notification) async {
-    final Event event;
     switch (notification.method) {
       case 'redraw':
-        event = RedrawEvent(notification);
-        break;
+        return RedrawEvent(notification);
       default:
         throw UnimplementedError(
           'Unimplemented notification method $notification',
         );
     }
-    notificationController.add(event);
-    return event;
   }
 }
 

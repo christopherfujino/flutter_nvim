@@ -29,11 +29,11 @@ abstract class NeoVimInterface {
     });
     process.then((io.Process process) {
       _stdoutSub = process.stdout.listen((List<int> data) {
-        logger.printTrace('got some data');
+        logger.printTrace('nvim emitted stdout');
         _parseResponse(data);
       });
       _stderrSub = process.stderr.listen((List<int> data) {
-        logger.printError('got some error!');
+        logger.printError('nvim emitted stderr');
         logger.printError(utf8.decode(data));
       });
     });
@@ -49,9 +49,9 @@ abstract class NeoVimInterface {
   late final StreamSubscription<List<int>> _stdoutSub;
   late final StreamSubscription<List<int>> _stderrSub;
 
-  final StreamController<Event> notificationController =
+  final StreamController<Event> _notificationController =
       StreamController<Event>();
-  Stream<Event> get notifications => notificationController.stream;
+  Stream<Event> get notifications => _notificationController.stream;
 
   final Logger logger;
 
@@ -61,7 +61,7 @@ abstract class NeoVimInterface {
       _stdoutSub.cancel(),
       _stderrSub.cancel(),
     ]);
-    await notificationController.close();
+    await _notificationController.close();
     (await process).kill();
     logger.printTrace('disposed nvim instance');
   }
@@ -72,6 +72,8 @@ abstract class NeoVimInterface {
     return _nextMsgid - 1;
   }
 
+  /// Sends a request and returns a [Future<Response>] that will be completed
+  /// when a matching response is received from the nvim.
   Future<Response> sendRequest(
     String method,
     List<Object?> params,
@@ -117,25 +119,26 @@ abstract class NeoVimInterface {
     assert(type == NOTIFICATION);
     final String method = messageList[1] as String;
     final List<Object?> params = messageList[2] as List<Object?>;
-    // TODO just directly return this [Notification]
-    final Notification notification = Notification(method, params);
-    //final io.File redrawBin = io.File('/home/fujino/git/flutter_nvim/dart_nvim/test/test_data/redraw_message.bin');
-    //redrawBin.writeAsBytesSync(bytes);
-    return notification;
+    return Notification(method, params);
   }
 
-  Future<void> handleNotification(Notification notification);
+  Future<Event> handleNotification(Notification notification);
 
-  void _parseResponse(List<int> bytes) {
+  Future<void> _parseResponse(List<int> bytes) async {
     try {
       final msg.Unpacker unpacker = msg.Unpacker.fromList(bytes);
       final List<Object?> messageList = unpacker.unpackList();
       final int type = messageList[0] as int;
       switch (type) {
         case NOTIFICATION:
-          unawaited(handleNotification(_parseNotification(bytes, messageList)));
+          logger.printTrace('Received a notification');
+          final Notification notification = _parseNotification(bytes, messageList);
+          final Event event = await handleNotification(notification);
+          logger.printTrace('adding notification to stream...');
+          _notificationController.add(event);
           return;
         case RESPONSE:
+          logger.printTrace('Received a response');
           final int msgid = messageList[1] as int;
           final Completer<Response>? completer = _responseCompleters[msgid];
           if (completer == null) {

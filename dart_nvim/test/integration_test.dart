@@ -5,13 +5,15 @@ import 'package:dart_nvim/src/nvim.dart';
 import 'package:test/test.dart';
 
 void main() {
-  late final NeoVim nvim;
+  late NeoVim nvim;
+  // TODO investigate why these don't independently pass
   setUpAll(() async {
     nvim = NeoVim(logger: BufferLogger());
+    await nvim.process;
   });
 
-  tearDownAll(() {
-    nvim.dispose();
+  tearDownAll(() async {
+    await nvim.dispose();
   });
 
   test('getApiInfo()', () async {

@@ -1,13 +1,22 @@
+import 'dart:io' as io;
+
+import 'package:dart_nvim/dart_nvim.dart';
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
+const Logger logger = Logger();
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final NeoVim nvim = NeoVim(logger: logger);
+  await nvim.process;
+  runApp(MyApp(nvim));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp(this.nvim, {Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
+  final NeoVim nvim;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -24,13 +33,19 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(nvim: nvim, title: 'Flutter Demo Home Page'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
+  const MyHomePage({
+    required this.nvim,
+    required this.title,
+    Key? key,
+  }) : super(key: key);
+
+  final NeoVim nvim;
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -44,21 +59,35 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<MyHomePage> createState() => _MyHomePageState(nvim: nvim);
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  _MyHomePageState({required this.nvim});
+  final NeoVim nvim;
+  String _message = '';
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+  @override
+  void initState() {
+    nvim.notifications.listen((Event event) {
+      print('got $event');
+      switch (event.runtimeType) {
+        case RedrawEvent:
+          setState(() => _message = 'Redrew');
+          break;
+        default:
+          throw UnimplementedError('Yikes! ${event.runtimeType}');
+      }
     });
+    _initialize();
+    super.initState();
+  }
+
+  Future<void> _initialize() async {
+    await nvim.process;
+    await nvim.getApiInfo();
+    await nvim.uiAttach(5, 5);
+    print('finished initializing!');
   }
 
   @override
@@ -99,14 +128,14 @@ class _MyHomePageState extends State<MyHomePage> {
               'You have pushed the button this many times:',
             ),
             Text(
-              '$_counter',
+              _message,
               style: Theme.of(context).textTheme.headline4,
             ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
+        onPressed: () {},
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
