@@ -6,13 +6,12 @@ import 'package:test/test.dart';
 
 void main() {
   late NeoVim nvim;
-  // TODO investigate why these don't independently pass
-  setUpAll(() async {
+  setUp(() async {
     nvim = NeoVim(logger: BufferLogger());
     await nvim.process;
   });
 
-  tearDownAll(() async {
+  tearDown(() async {
     await nvim.dispose();
   });
 

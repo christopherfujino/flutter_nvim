@@ -56,12 +56,17 @@ abstract class NeoVimInterface {
   final Logger logger;
 
   Future<void> dispose() async {
+    logger.printTrace('cancelling STDOUT and STDERR subscriptions');
     // These should be cancelled before notificationController is closed
     await Future.wait(<Future<void>>[
       _stdoutSub.cancel(),
       _stderrSub.cancel(),
     ]);
-    await _notificationController.close();
+    logger.printTrace('closing notification controller');
+    if (_notificationController.hasListener) {
+      await _notificationController.close();
+    }
+    logger.printTrace('killing sub process');
     (await process).kill();
     logger.printTrace('disposed nvim instance');
   }
@@ -80,6 +85,7 @@ abstract class NeoVimInterface {
     io.IOSink sink,
   ) async {
     final int msgid = nextMsgid;
+    logger.printTrace('sending $method request with msgid $msgid');
     final Uint8List requestBytes = _buildRequest(msgid, method, params);
     final Completer<Response> completer = Completer<Response>();
     // call server
@@ -138,8 +144,8 @@ abstract class NeoVimInterface {
           _notificationController.add(event);
           return;
         case RESPONSE:
-          logger.printTrace('Received a response');
           final int msgid = messageList[1] as int;
+          logger.printTrace('Received response with msgid $msgid');
           final Completer<Response>? completer = _responseCompleters[msgid];
           if (completer == null) {
             throw 'not expecting msgid $msgid!';

@@ -11,13 +11,12 @@ mixin ApiCalls on NeoVimInterface {
   }
 
   Future<Response> uiAttach(int width, int height) async {
-    logger.printTrace('about to send request for nvim_ui_attach');
-    final Map<String, Object?> options = <String, Object?>{
+    const Map<String, Object?> options = <String, Object?>{
       'ext_linegrid': true,
-    }; // TODO implement options
+    };
     final Response response = await sendRequest(
       'nvim_ui_attach',
-      [width, height, options],
+      <Object>[width, height, options],
       (await process).stdin,
     );
     return response;
