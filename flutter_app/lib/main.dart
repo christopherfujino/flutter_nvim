@@ -1,13 +1,18 @@
+import 'dart:async';
+//import 'dart:io';
+
 import 'package:dart_nvim/dart_nvim.dart';
 import 'package:flutter/material.dart';
 
 const Logger logger = Logger();
-final NeoVim nvim = NeoVim(logger: logger);
+late final NeoVim nvim;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await nvim.process;
-  runApp(MyApp());
+  nvim = NeoVim(logger: logger);
+  await nvim.uiAttach(500, 500);
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -29,7 +34,7 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'nvim'),
     );
   }
 }
@@ -66,12 +71,14 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _initialize() async {
-    await nvim.process;
+    print('initializing state...');
     nvim.notifications.listen((Event event) {
-      print('got $event');
       switch (event.runtimeType) {
         case RedrawEvent:
-          setState(() => _message = 'Redrew');
+          setState(() {
+            final GridResize resize = (event as RedrawEvent).gridResize;
+            _message = 'grid: ${resize.grid}\nwidth: ${resize.width}\nheight: ${resize.height}';
+          });
           break;
         default:
           throw UnimplementedError('Yikes! ${event.runtimeType}');
@@ -79,7 +86,6 @@ class _MyHomePageState extends State<MyHomePage> {
     });
 
     //await nvim.getApiInfo();
-    await nvim.uiAttach(5, 5);
     print('finished initializing!');
   }
 
