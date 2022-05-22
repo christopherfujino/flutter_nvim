@@ -8,7 +8,6 @@ void main() {
   late NeoVim nvim;
   setUp(() async {
     nvim = NeoVim(logger: BufferLogger());
-    await nvim.process;
   });
 
   tearDown(() async {
@@ -22,9 +21,10 @@ void main() {
   });
 
   test('uiAttach()', () async {
+    final Future<Event> futureEvent = nvim.notifications.first;
     final Response response = await nvim.uiAttach(500, 500);
     expect(response.error, isNull);
-    final Event redraw = await nvim.notifications.first;
+    final Event redraw = await futureEvent;
     expect(redraw.runtimeType, RedrawEvent);
     expect((redraw as RedrawEvent).gridResize.width, 500);
     expect(redraw.gridResize.height, 500);
