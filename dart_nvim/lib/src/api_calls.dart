@@ -3,21 +3,54 @@ import 'nvim.dart';
 // This is a mixin for convenience. It is only used in [NeoVim].
 mixin ApiCalls on NeoVimInterface {
   /// Call nvim_get_api_info.
+  ///
+  /// See `:help nvim_get_api_info()` for more information.
+  ///
+  /// Returns a 2-tuple (Array), where item 0 is the current channel
+  /// id and item 1 is the |api-metadata| map (Dictionary).
+  ///
+  /// Return:
+  ///     2-tuple [{channel-id}, {api-metadata}]
+  ///
+  /// Attributes:
+  ///     {fast}
   Future<ApiInfoResponse> getApiInfo() async {
     logger.printTrace('about to send request for nvim_get_api_info');
-    final Response response =
-        await sendRequest('nvim_get_api_info', [], (await process).stdin);
+    final Response response = await sendRequest(
+      'nvim_get_api_info',
+      [],
+    );
     return ApiInfoResponse(response);
   }
 
-  Future<Response> uiAttach(int width, int height) async {
-    const Map<String, Object?> options = <String, Object?>{
+  /// nvim_ui_attach({width}, {height}, {options})       *nvim_ui_attach()*
+  ///
+  /// Activates UI events on the channel.
+  ///
+  /// Entry point of all UI clients. Allows |--embed| to continue
+  /// startup. Implies that the client is ready to show the UI. Adds
+  /// the client to the list of UIs. |nvim_list_uis()|
+  ///
+  /// Note:
+  ///     If multiple UI clients are attached, the global screen
+  ///     dimensions degrade to the smallest client. E.g. if client
+  ///     A requests 80x40 but client B requests 200x100, the global
+  ///     screen has size 80x40.
+  ///
+  /// Parameters:
+  ///     {width}    Requested screen columns
+  ///     {height}   Requested screen rows
+  ///     {options}  |ui-option| map
+  Future<Response> uiAttach(
+    int width,
+    int height, {
+    Map<String, Object?> options = const <String, Object?>{
       'ext_linegrid': true,
-    };
+    },
+  }) async {
     final Response response = await sendRequest(
       'nvim_ui_attach',
       <Object>[width, height, options],
-      (await process).stdin,
     );
     return response;
   }

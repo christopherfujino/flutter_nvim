@@ -1,21 +1,17 @@
-import 'dart:io' as io;
-
 import 'package:dart_nvim/dart_nvim.dart';
 import 'package:flutter/material.dart';
 
 const Logger logger = Logger();
+final NeoVim nvim = NeoVim(logger: logger);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final NeoVim nvim = NeoVim(logger: logger);
   await nvim.process;
-  runApp(MyApp(nvim));
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp(this.nvim, {Key? key}) : super(key: key);
-
-  final NeoVim nvim;
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -33,19 +29,16 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(nvim: nvim, title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({
-    required this.nvim,
     required this.title,
     Key? key,
   }) : super(key: key);
-
-  final NeoVim nvim;
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -59,16 +52,21 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState(nvim: nvim);
+  State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  _MyHomePageState({required this.nvim});
-  final NeoVim nvim;
+  _MyHomePageState();
   String _message = '';
 
   @override
   void initState() {
+    _initialize();
+    super.initState();
+  }
+
+  Future<void> _initialize() async {
+    await nvim.process;
     nvim.notifications.listen((Event event) {
       print('got $event');
       switch (event.runtimeType) {
@@ -79,13 +77,8 @@ class _MyHomePageState extends State<MyHomePage> {
           throw UnimplementedError('Yikes! ${event.runtimeType}');
       }
     });
-    _initialize();
-    super.initState();
-  }
 
-  Future<void> _initialize() async {
-    await nvim.process;
-    await nvim.getApiInfo();
+    //await nvim.getApiInfo();
     await nvim.uiAttach(5, 5);
     print('finished initializing!');
   }

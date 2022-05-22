@@ -23,6 +23,9 @@ abstract class NeoVimInterface {
       : process = _spawnServer(
           <String>['-u', 'NONE', '--embed'],
           //    env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
+        ),
+        _notificationController = StreamController<Event>(
+          onListen: () => logger.printTrace('Listener attached!'),
         ) {
     process.onError((Object error, StackTrace stacktrace) {
       throw 'Whoopsies!\n$error';
@@ -49,8 +52,7 @@ abstract class NeoVimInterface {
   late final StreamSubscription<List<int>> _stdoutSub;
   late final StreamSubscription<List<int>> _stderrSub;
 
-  final StreamController<Event> _notificationController =
-      StreamController<Event>();
+  final StreamController<Event> _notificationController;
   Stream<Event> get notifications => _notificationController.stream;
 
   final Logger logger;
@@ -82,7 +84,6 @@ abstract class NeoVimInterface {
   Future<Response> sendRequest(
     String method,
     List<Object?> params,
-    io.IOSink sink,
   ) async {
     final int msgid = nextMsgid;
     logger.printTrace('sending $method request with msgid $msgid');
@@ -90,9 +91,9 @@ abstract class NeoVimInterface {
     final Completer<Response> completer = Completer<Response>();
     // call server
     // must add binary data, not utf8 text
-    sink.add(requestBytes);
+    (await process).stdin.add(requestBytes);
     _responseCompleters[msgid] = completer;
-    await sink.flush(); // TODO do we need to do this?
+    (await process).stdin.flush(); // TODO do we need to do this?
     return completer.future;
   }
 
@@ -138,7 +139,8 @@ abstract class NeoVimInterface {
       switch (type) {
         case NOTIFICATION:
           logger.printTrace('Received a notification');
-          final Notification notification = _parseNotification(bytes, messageList);
+          final Notification notification =
+              _parseNotification(bytes, messageList);
           final Event event = await handleNotification(notification);
           logger.printTrace('adding notification to stream...');
           _notificationController.add(event);
