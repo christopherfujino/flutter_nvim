@@ -1,68 +1,36 @@
 import 'dart:async';
-//import 'dart:io';
 
 import 'package:dart_nvim/dart_nvim.dart';
+import 'package:dart_nvim/src/api_calls.dart';
 import 'package:flutter/material.dart';
 
 const Logger logger = Logger();
-late final NeoVim nvim;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  nvim = NeoVim(logger: logger);
-  await nvim.uiAttach(500, 500);
-
-  runApp(const MyApp());
+  runApp(
+    const Directionality(
+      textDirection: TextDirection.ltr,
+      child: EditorWidget(),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(title: 'nvim'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({
-    required this.title,
+class EditorWidget extends StatefulWidget {
+  const EditorWidget({
     Key? key,
   }) : super(key: key);
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<EditorWidget> createState() => _EditorWidgetState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  _MyHomePageState();
+class _EditorWidgetState extends State<EditorWidget> {
+  _EditorWidgetState();
+  int _notificationCount = 0;
   String _message = '';
+  late final NeoVim nvim;
+  bool isReady = false;
 
   @override
   void initState() {
@@ -71,13 +39,19 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _initialize() async {
-    print('initializing state...');
+    nvim = NeoVim(logger: logger);
+
     nvim.notifications.listen((Event event) {
       switch (event.runtimeType) {
         case RedrawEvent:
+          event as RedrawEvent;
+          print('updating UI for redraw');
           setState(() {
-            final GridResize resize = (event as RedrawEvent).gridResize;
-            _message = 'grid: ${resize.grid}\nwidth: ${resize.width}\nheight: ${resize.height}';
+            final GridResize resize = event.gridResize;
+            _message =
+                'grid: ${resize.grid}\nwidth: ${resize.width}\nheight: ${resize.height}';
+            _notificationCount += 1;
+            isReady = true;
           });
           break;
         default:
@@ -85,59 +59,32 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     });
 
-    //await nvim.getApiInfo();
-    print('finished initializing!');
+    await nvim.getApiInfo();
+    await nvim.uiAttach(500, 500);
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+    if (!isReady) {
+      return Center(
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              _message,
-              style: Theme.of(context).textTheme.headline4,
-            ),
+          textDirection: TextDirection.ltr,
+          children: const <Widget>[
+            Text('nvim binary is not yet ready...'),
           ],
         ),
+      );
+    }
+    return Center(
+      child: Column(
+        textDirection: TextDirection.ltr,
+        children: <Widget>[
+          Text('You have received $_notificationCount notifications.'),
+          Text(
+            _message,
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }

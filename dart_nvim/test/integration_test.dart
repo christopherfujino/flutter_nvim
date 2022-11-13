@@ -7,7 +7,10 @@ import 'package:test/test.dart';
 void main() {
   late NeoVim nvim;
   setUp(() async {
-    nvim = NeoVim(logger: BufferLogger());
+    nvim = NeoVim(
+      logger: BufferLogger(),
+      binaryPath: '../third_party/neovim/build/bin/nvim',
+    );
   });
 
   tearDown(() async {

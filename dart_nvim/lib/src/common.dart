@@ -18,6 +18,18 @@ class Logger {
   }
 }
 
+class NoOpLogger implements Logger {
+  const NoOpLogger();
+
+  final bool verbose = false;
+
+  void printTrace(Object? msg) {}
+
+  void printStatus(Object? msg) {}
+
+  void printError(Object? msg) {}
+}
+
 class BufferLogger implements Logger {
   final bool verbose = false;
 

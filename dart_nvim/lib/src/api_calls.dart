@@ -15,7 +15,7 @@ mixin ApiCalls on NeoVimInterface {
   /// Attributes:
   ///     {fast}
   Future<ApiInfoResponse> getApiInfo() async {
-    logger.printTrace('about to send request for nvim_get_api_info');
+    logger.printTrace('sending nvim_get_api_info to nvim...');
     final Response response = await sendRequest(
       'nvim_get_api_info',
       [],
@@ -47,12 +47,11 @@ mixin ApiCalls on NeoVimInterface {
     Map<String, Object?> options = const <String, Object?>{
       'ext_linegrid': true,
     },
-  }) async {
-    final Response response = await sendRequest(
+  }) {
+    return sendRequest(
       'nvim_ui_attach',
       <Object>[width, height, options],
     );
-    return response;
   }
 }
 

@@ -14,13 +14,14 @@ const int RESPONSE = 1;
 const int NOTIFICATION = 2;
 
 class NeoVim extends NeoVimInterface with ApiCalls, Events {
-  NeoVim({required super.logger});
+  NeoVim({required super.logger, required super.binaryPath});
 }
 
 // Only for use by mixins.
 abstract class NeoVimInterface {
-  NeoVimInterface({required this.logger})
+  NeoVimInterface({required this.logger, required this.binaryPath})
       : process = _spawnServer(
+          binaryPath,
           <String>['-u', 'NONE', '--embed'],
           //    env: <String, String>{'VIMINIT': 'echo \'yolo dawg!\''},
         ),
@@ -42,7 +43,7 @@ abstract class NeoVimInterface {
     });
   }
 
-  static const String binary = 'nvim';
+  final String binaryPath;
   final io.HttpClient client = io.HttpClient();
   final Map<int, Completer<Response>> _responseCompleters =
       <int, Completer<Response>>{};
@@ -138,16 +139,16 @@ abstract class NeoVimInterface {
       final int type = messageList[0] as int;
       switch (type) {
         case NOTIFICATION:
-          logger.printTrace('Received a notification');
           final Notification notification =
               _parseNotification(bytes, messageList);
+          logger.printTrace('Parsing a ${notification.method} notification');
           final Event event = await handleNotification(notification);
           logger.printTrace('adding notification to stream...');
           _notificationController.add(event);
           return;
         case RESPONSE:
           final int msgid = messageList[1] as int;
-          logger.printTrace('Received response with msgid $msgid');
+          logger.printTrace('Parsing a response with msgid $msgid');
           final Completer<Response>? completer = _responseCompleters[msgid];
           if (completer == null) {
             throw 'not expecting msgid $msgid!';
@@ -183,11 +184,12 @@ abstract class NeoVimInterface {
   }
 
   static Future<io.Process> _spawnServer(
+    String binaryPath,
     List<String> args, {
     Map<String, String>? env,
   }) async {
     return await io.Process.start(
-      binary,
+      binaryPath,
       args,
       environment: env,
       mode: io.ProcessStartMode.normal,

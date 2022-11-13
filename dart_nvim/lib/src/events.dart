@@ -18,7 +18,8 @@ abstract class Event {}
 class RedrawEvent extends Event {
   RedrawEvent(Notification notification) {
     for (final Object? param in notification.params) {
-      switch ((param as List<Object?>).first) {
+      param as List<Object?>;
+      switch (param.first) {
         case 'grid_resize':
           final List<Object?> rest = param[1] as List<Object?>;
           gridResize = GridResize(
@@ -28,7 +29,7 @@ class RedrawEvent extends Event {
           );
           break;
         default:
-          // ?
+          throw param.first ?? 'null';
       }
     }
   }
