@@ -25,12 +25,12 @@ void main() {
 
   test('uiAttach()', () async {
     final Future<Event> futureEvent = nvim.notifications.first;
-    final Response response = await nvim.uiAttach(500, 500);
+    final Response response = await nvim.uiAttach(20, 20);
     expect(response.error, isNull);
     final Event redraw = await futureEvent;
     expect(redraw.runtimeType, RedrawEvent);
-    expect((redraw as RedrawEvent).gridResize.width, 500);
-    expect(redraw.gridResize.height, 500);
-    expect(redraw.gridResize.grid, 1);
+    expect((redraw as RedrawEvent).gridResize?.width, 20);
+    expect(redraw.gridResize?.height, 20);
+    expect(redraw.gridResize?.grid, 1);
   });
 }

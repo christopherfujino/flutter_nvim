@@ -23,7 +23,7 @@ mixin ApiCalls on NeoVimInterface {
     return ApiInfoResponse(response);
   }
 
-  /// nvim_ui_attach({width}, {height}, {options})       *nvim_ui_attach()*
+  /// `nvim_ui_attach({width}, {height}, {options})`
   ///
   /// Activates UI events on the channel.
   ///
