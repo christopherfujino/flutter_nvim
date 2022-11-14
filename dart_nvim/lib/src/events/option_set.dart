@@ -16,205 +16,167 @@ import 'package:dart_nvim/src/events/redraw_event.dart' show RedrawSubEvent;
 /// 'termguicolors'
 /// "ext_*" (all |ui-ext-options|)
 class OptionSet implements RedrawSubEvent {
-  const OptionSet._({
-    required this.arabicshape,
-    required this.ambiwidth,
-    required this.emoji,
-    required this.guifont,
-    required this.guifontwide,
-    required this.linespace,
-    required this.mousefocus,
-    required this.pumblend,
-    required this.showtabline,
-    required this.ttimeout,
-    required this.ttimeoutlen,
-  });
+  const OptionSet._(this.options);
+
+  final Iterable<OptionSetElement> options;
 
   factory OptionSet.fromList(List<Object?> params) {
-    bool? arabicshape;
-    String? ambiwidth;
-    bool? emoji;
-    String? guifont;
-    String? guifontwide;
-    int? linespace;
-    bool? mousefocus;
-    int? pumblend;
-    int? showtabline;
-    bool? ttimeout;
-    int? ttimeoutlen;
-    for (final Object? param in params) {
+    final Iterable<OptionSetElement?> options =
+        params.map<OptionSetElement?>((Object? param) {
       final String name = (param as List<Object?>)[0] as String;
       switch (name) {
         case 'arabicshape':
-          arabicshape = param[1] as bool;
-          break;
+          return ArabicShape(param[1] as bool);
         case 'ambiwidth':
-          final String value = param[1] as String;
-          if (!validAmbiwidthValues.contains(value)) {
-            throw UnimplementedError(
-              'Unknown "ambiwidth" value "$value" returned by nvim!',
-            );
-          }
-          ambiwidth = value;
-          break;
+          return AmbiWidth(param[1] as String);
         case 'emoji':
-          final bool value = param[1] as bool;
-          emoji = value;
-          break;
+          return Emoji(param[1] as bool);
         case 'guifont':
-          final String value = param[1] as String;
           // what does it mean if this is an empty string?
-          guifont = value;
-          break;
+          return GuiFont(param[1] as String);
         case 'guifontwide':
-          final String value = param[1] as String;
-          guifontwide = value;
-          break;
+          return GuiFontWide(param[1] as String);
         case 'linespace':
-          final int value = param[1] as int;
-          linespace = value;
-          break;
+          return LineSpace(param[1] as int);
         case 'mousefocus':
-          mousefocus = param[1] as bool;
-          break;
+          return MouseFocus(param[1] as bool);
         case 'pumblend':
-          pumblend = param[1] as int;
-          break;
+          return PumBlend(param[1] as int);
         case 'showtabline':
-          final int value = param[1] as int;
-          assert(
-            value >= 0 && value <= 2,
-            'Value $value should be 0, 1, or 2',
-          );
-          showtabline = value;
-          break;
+          return ShowTabline(param[1] as int);
         case 'termguicolors':
           // No-op, since this is related to TUI.
-          break;
+          return null;
         case 'ttimeout':
-          ttimeout = param[1] as bool;
-          break;
+          return TTimeout(param[1] as bool);
         case 'ttimeoutlen':
-          ttimeoutlen = param[1] as int;
-          break;
+          return TTimeoutLen(param[1] as int);
         case 'ext_linegrid':
           assert(param[1] == true);
-          // For this GUI, we will assume linegrid.
-          break;
+          return null;
         case 'ext_multigrid':
           // TODO implement
           assert(param[1] == false);
-          break;
+          return null;
         case 'ext_hlstate':
           // The `ext_hlstate` extension allows to the UI to also receive a semantic description of the highlights active in a cell.
           assert(param[1] == false);
-          break;
+          return null;
         case 'ext_termcolors':
           assert(param[1] == false);
-          break;
+          return null;
         case 'ext_cmdline':
           assert(param[1] == false);
           // TODO implement GUI commandline
-          break;
+          return null;
         case 'ext_popupmenu':
           assert(param[1] == false);
           // TODO implement GUI :help popupmenu-completion
-          break;
+          return null;
         case 'ext_tabline':
           // prob don't want GUI tabline
           assert(param[1] == false);
-          break;
+          return null;
         case 'ext_wildmenu':
           // :help ui-wildmenu
           // deprecated, instead use ui-cmdline with ui-popupmenu
           assert(param[1] == false);
-          break;
+          return null;
         case 'ext_messages':
           // TODO implement external messages
           assert(param[1] == false);
-          break;
+          return null;
         default:
           throw UnimplementedError(
             'Unimplemented option "$name": ${param[1]}\n$param',
           );
       }
-    }
-    return OptionSet._(
-      arabicshape: arabicshape,
-      ambiwidth: ambiwidth,
-      emoji: emoji,
-      guifont: guifont,
-      guifontwide: guifontwide,
-      linespace: linespace,
-      mousefocus: mousefocus,
-      pumblend: pumblend,
-      showtabline: showtabline,
-      ttimeout: ttimeout,
-      ttimeoutlen: ttimeoutlen,
-    );
+    });
+    return OptionSet._(options.whereType<OptionSetElement>());
   }
+}
 
-  final bool? arabicshape;
-  final String? ambiwidth;
-  final bool? emoji;
+abstract class OptionSetElement<T> {
+  const OptionSetElement(this.value);
 
-  /// help: guifont
-  ///
-  /// TODO: this could be a comma delimitted list.
-  /// TODO: GUI should respect this.
-  final String? guifont;
-  final String? guifontwide;
+  final T value;
+}
 
-  /// help: linespace
-  ///
-  /// Number of pixel lines inserted between characters.
-  /// Defaults to 0.
-  final int? linespace;
+class ArabicShape extends OptionSetElement<bool> {
+  const ArabicShape._(super.value) : super();
 
-  /// The window that the mouse pointer is on is automatically activated.
-  ///
-  /// Defaults to off.
-  /// TODO implement.
-  final bool? mousefocus;
+  factory ArabicShape(bool value) => value ? _true : _false;
 
-  /// Pseudo transparency for the |popup-menu|.
-  ///
-  /// 0 is full opaque, 100 fully transparent. 0-30 typically most useful.
-  final int? pumblend;
+  static const ArabicShape _true = ArabicShape._(true);
+  static const ArabicShape _false = ArabicShape._(false);
+}
 
-  /// When tab page labels will be displayed.
-  ///
-  /// This is an enumeration where:
-  /// 0: never
-  /// 1: only if there are at least two tabs
-  /// 2: always
-  final int? showtabline;
+// See //third_party/neovim/src/nvim/option.c `p_ambw_values`.
+class AmbiWidth extends OptionSetElement<String> {
+  const AmbiWidth(super.value) : assert(value == 'single' || value == 'double');
+}
 
-  /// Whether or not ttimeoutlen should be waited after <Esc> to complete
-  /// a key code sequence.
-  final bool? ttimeout;
+class Emoji extends OptionSetElement<bool> {
+  const Emoji._(super.value) : super();
 
-  /// Time in milliseconds to wait for a key code sequence to complete.
-  final int? ttimeoutlen;
+  factory Emoji(bool value) => value ? _true : _false;
 
-  // See //third_party/neovim/src/nvim/option.c `p_ambw_values`.
-  static const Set<String> validAmbiwidthValues = <String>{
-    'single',
-    'double',
-  };
+  static const Emoji _true = Emoji._(true);
+  static const Emoji _false = Emoji._(false);
+}
 
-  @override
-  String toString() => '''
-arabicshape: $arabicshape
-ambiwidth: $ambiwidth
-emoji: $emoji
-guifont: $guifont
-guifontwide: $guifontwide
-linespace: $linespace
-mousefocus: $mousefocus
-pumblend: $pumblend
-showtabline: $showtabline
-ttimeout: $ttimeout
-ttimeoutlen: $ttimeoutlen
-''';
+/// help: guifont
+///
+/// TODO: this could be a comma delimitted list.
+/// TODO: GUI should respect this.
+class GuiFont extends OptionSetElement<String> {
+  const GuiFont(super.value);
+}
+
+class GuiFontWide extends OptionSetElement<String> {
+  const GuiFontWide(super.value);
+}
+
+/// Number of pixel lines inserted between characters.
+///
+/// Defaults to 0.
+/// help: linespace
+class LineSpace extends OptionSetElement<int> {
+  const LineSpace(super.value);
+}
+
+/// The window that the mouse pointer is on is automatically activated.
+///
+/// Defaults to off.
+/// TODO implement.
+class MouseFocus extends OptionSetElement<bool> {
+  const MouseFocus(super.value);
+}
+
+/// Pseudo transparency for the |popup-menu|.
+///
+/// 0 is full opaque, 100 fully transparent. 0-30 typically most useful.
+class PumBlend extends OptionSetElement<int> {
+  const PumBlend(super.value);
+}
+
+/// When tab page labels will be displayed.
+///
+/// This is an enumeration where:
+/// 0: never
+/// 1: only if there are at least two tabs
+/// 2: always
+class ShowTabline extends OptionSetElement<int> {
+  const ShowTabline(super.value) : assert(value >= 0 && value <= 2);
+}
+
+/// Whether or not ttimeoutlen should be waited after <Esc> to complete
+/// a key code sequence.
+class TTimeout extends OptionSetElement<bool> {
+  const TTimeout(super.value);
+}
+
+/// Time in milliseconds to wait for a key code sequence to complete.
+class TTimeoutLen extends OptionSetElement<int> {
+  const TTimeoutLen(super.value);
 }

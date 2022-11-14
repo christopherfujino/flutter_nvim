@@ -41,119 +41,75 @@ void main() {
     expect(
       subEvents,
       orderedEquals(
-        <Object>[
+        <Matcher>[
           isA<OptionSet>()
-              .having(
-                (OptionSet event) => event.arabicshape,
-                'arabicshape',
+          .having(
+            (OptionSet event) => event.options,
+            'options',
+            orderedEquals(<Matcher>[
+              isA<ArabicShape>().having(
+                (ArabicShape element) => element.value,
+                'value',
                 isTrue,
-              )
-              .having(
-                (OptionSet event) => event.ambiwidth,
-                'ambiwidth',
+              ),
+              isA<AmbiWidth>().having(
+                (AmbiWidth element) => element.value,
+                'value',
                 'single',
-              )
-              .having(
-                (OptionSet event) => event.emoji,
+              ),
+              isA<Emoji>().having(
+                (Emoji element) => element.value,
                 'emoji',
                 isTrue,
-              )
-              .having(
-                (OptionSet event) => event.guifont,
+              ),
+              isA<GuiFont>().having(
+                (GuiFont element) => element.value,
                 'guifont',
                 isEmpty,
-              )
-              .having(
-                (OptionSet event) => event.guifontwide,
+              ),
+              isA<GuiFontWide>().having(
+                (GuiFontWide element) => element.value,
                 'guifontwide',
                 isEmpty,
-              )
-              .having(
-                (OptionSet event) => event.linespace,
+              ),
+              isA<LineSpace>().having(
+                (LineSpace element) => element.value,
                 'linespace',
                 0,
-              )
-              .having(
-                (OptionSet event) => event.mousefocus,
+              ),
+              isA<MouseFocus>().having(
+                (MouseFocus element) => element.value,
                 'mousefocus',
                 isFalse,
-              )
-              .having(
-                (OptionSet event) => event.pumblend,
+              ),
+              isA<PumBlend>().having(
+                (PumBlend element) => element.value,
                 'pumblend',
                 0,
-              )
-              .having(
-                (OptionSet event) => event.showtabline,
+              ),
+              isA<ShowTabline>().having(
+                (ShowTabline element) => element.value,
                 'showtabline',
                 1,
-              )
-              .having(
-                (OptionSet event) => event.ttimeout,
+              ),
+              isA<TTimeout>().having(
+                (TTimeout element) => element.value,
                 'ttimeout',
                 isTrue,
-              )
-              .having(
-                (OptionSet event) => event.ttimeoutlen,
+              ),
+              isA<TTimeoutLen>().having(
+                (TTimeoutLen element) => element.value,
                 'ttimeoutlen',
                 50,
               ),
+            ]),
+          ),
           isA<DefaultColorsSet>(),
           isA<OptionSet>()
               .having(
-                (OptionSet event) => event.arabicshape,
-                'arabicshape',
-                isNull,
-              )
-              .having(
-                (OptionSet event) => event.ambiwidth,
-                'ambiwidth',
-                isNull,
-              )
-              .having(
-                (OptionSet event) => event.emoji,
-                'emoji',
-                isNull,
-              )
-              .having(
-                (OptionSet event) => event.guifont,
-                'guifont',
-                isNull,
-              )
-              .having(
-                (OptionSet event) => event.guifontwide,
-                'guifontwide',
-                isNull,
-              )
-              .having(
-                (OptionSet event) => event.linespace,
-                'linespace',
-                isNull,
-              )
-              .having(
-                (OptionSet event) => event.mousefocus,
-                'mousefocus',
-                isNull,
-              )
-              .having(
-                (OptionSet event) => event.pumblend,
-                'pumblend',
-                isNull,
-              )
-              .having(
-                (OptionSet event) => event.showtabline,
-                'showtabline',
-                isNull,
-              )
-              .having(
-                (OptionSet event) => event.ttimeout,
-                'ttimeout',
-                isNull,
-              )
-              .having(
-                (OptionSet event) => event.ttimeoutlen,
-                'ttimeoutlen',
-                isNull,
+                (OptionSet event) => event.options,
+                'options',
+                isEmpty,
               ),
           isA<DefaultColorsSet>(),
           isA<GridResize>()
@@ -172,7 +128,7 @@ void main() {
                 'height should be what we initialized uiAttach with',
                 height,
               ),
-          Flush.instance,
+          equals(Flush.instance),
         ],
       ),
     );
