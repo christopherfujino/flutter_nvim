@@ -31,5 +31,5 @@ class GridResize implements RedrawSubEvent {
   final int height;
 
   @override
-  String toString() => 'grid: $grid\nwidth: $width\nheight: $height';
+  String toString() => 'grid: $grid - width: $width - height: $height';
 }

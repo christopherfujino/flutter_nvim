@@ -1,7 +1,10 @@
 import 'default_colors_set.dart';
 import 'event.dart';
+import 'grid_clear.dart';
+import 'grid_line.dart';
 import 'grid_resize.dart';
 import 'option_set.dart';
+import 'win_viewport.dart';
 import '../nvim.dart' show Notification;
 
 class RedrawEvent extends Event {
@@ -20,11 +23,45 @@ class RedrawEvent extends Event {
         case 'default_colors_set':
           return DefaultColorsSet.fromList(tail);
         case 'flush':
-          // UI should only draw after a flush event
-          // TODO trigger ui flush hook.
           return Flush.instance;
+        case 'hl_attr_define':
+          // TODO implement for highlights
+          return null;
+        case 'hl_group_set':
+          // The builtin highlight group `name` was set to use the attributes `hl_id`
+          // defined by a previous `hl_attr_define` call. This event is not needed
+          // to render the grids which use attribute ids directly, but is useful
+          // for an UI who want to render its own elements with consistent
+          // highlighting. For instance an UI using |ui-popupmenu| events, might
+          // use the |hl-Pmenu| family of builtin highlights.
+          return null;
+        case 'grid_clear':
+          return GridClear.fromList(tail);
+        case 'win_viewport':
+          return WinViewport.fromList(tail);
+        case 'grid_line':
+          return GridLine.fromList(tail);
+        case 'grid_cursor_goto':
+          // TODO implement cursor
+          return null;
+        case 'mode_info_set':
+          // ["mode_info_set", cursor_style_enabled, mode_info]
+          //print('cursor_style_enabled: ${(tail[0] as List<Object?>)[0]}');
+          //((tail[0] as List<Object?>)[1] as List).forEach(print);
+          // TODO implement cursor style
+          // TODO mode_info here seems important
+          return null;
+        case 'mode_change':
+          // ["mode_change", mode, mode_idx]
+          // TODO implement modes
+          return null;
+        case 'mouse_off':
+        case 'mouse_on':
+          // TODO implement mouse
+          return null;
       }
-      return null; // TODO throw UnimplementedError()
+      print(param);
+      throw UnimplementedError('TODO implement $head redraw subevent');
     });
     return RedrawEvent._(subEvents.whereType<RedrawSubEvent>());
   }
@@ -32,7 +69,9 @@ class RedrawEvent extends Event {
   final Iterable<RedrawSubEvent> subEvents;
 }
 
-abstract class RedrawSubEvent {}
+abstract class RedrawSubEvent {
+  const RedrawSubEvent();
+}
 
 class Flush implements RedrawSubEvent {
   const Flush._();

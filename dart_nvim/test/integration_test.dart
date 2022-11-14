@@ -38,99 +38,164 @@ void main() {
     expect(redraw, isA<RedrawEvent>());
     final Iterable<RedrawSubEvent> subEvents =
         (redraw as RedrawEvent).subEvents;
+    final Iterator<RedrawSubEvent> iterator = subEvents.iterator;
+    expect(iterator.moveNext(), isTrue);
     expect(
-      subEvents,
-      orderedEquals(
-        <Matcher>[
-          isA<OptionSet>()
-          .having(
-            (OptionSet event) => event.options,
-            'options',
-            orderedEquals(<Matcher>[
-              isA<ArabicShape>().having(
-                (ArabicShape element) => element.value,
-                'value',
-                isTrue,
-              ),
-              isA<AmbiWidth>().having(
-                (AmbiWidth element) => element.value,
-                'value',
-                'single',
-              ),
-              isA<Emoji>().having(
-                (Emoji element) => element.value,
-                'emoji',
-                isTrue,
-              ),
-              isA<GuiFont>().having(
-                (GuiFont element) => element.value,
-                'guifont',
-                isEmpty,
-              ),
-              isA<GuiFontWide>().having(
-                (GuiFontWide element) => element.value,
-                'guifontwide',
-                isEmpty,
-              ),
-              isA<LineSpace>().having(
-                (LineSpace element) => element.value,
-                'linespace',
-                0,
-              ),
-              isA<MouseFocus>().having(
-                (MouseFocus element) => element.value,
-                'mousefocus',
-                isFalse,
-              ),
-              isA<PumBlend>().having(
-                (PumBlend element) => element.value,
-                'pumblend',
-                0,
-              ),
-              isA<ShowTabline>().having(
-                (ShowTabline element) => element.value,
-                'showtabline',
-                1,
-              ),
-              isA<TTimeout>().having(
-                (TTimeout element) => element.value,
-                'ttimeout',
-                isTrue,
-              ),
-              isA<TTimeoutLen>().having(
-                (TTimeoutLen element) => element.value,
-                'ttimeoutlen',
-                50,
-              ),
-            ]),
+      iterator.current,
+      isA<OptionSet>().having(
+        (OptionSet event) => event.options,
+        'options',
+        orderedEquals(<Matcher>[
+          isA<ArabicShape>().having(
+            (ArabicShape element) => element.value,
+            'value',
+            isTrue,
           ),
-          isA<DefaultColorsSet>(),
-          isA<OptionSet>()
-              .having(
-                (OptionSet event) => event.options,
-                'options',
-                isEmpty,
-              ),
-          isA<DefaultColorsSet>(),
-          isA<GridResize>()
-              .having(
-                (GridResize event) => event.grid,
-                'grid index should be 1', // why?
-                1,
-              )
-              .having(
-                (GridResize event) => event.width,
-                'width should be what we initialized uiAttach with',
-                width,
-              )
-              .having(
-                (GridResize event) => event.height,
-                'height should be what we initialized uiAttach with',
-                height,
-              ),
-          equals(Flush.instance),
-        ],
+          isA<AmbiWidth>().having(
+            (AmbiWidth element) => element.value,
+            'value',
+            'single',
+          ),
+          isA<Emoji>().having(
+            (Emoji element) => element.value,
+            'emoji',
+            isTrue,
+          ),
+          isA<GuiFont>().having(
+            (GuiFont element) => element.value,
+            'guifont',
+            isEmpty,
+          ),
+          isA<GuiFontWide>().having(
+            (GuiFontWide element) => element.value,
+            'guifontwide',
+            isEmpty,
+          ),
+          isA<LineSpace>().having(
+            (LineSpace element) => element.value,
+            'linespace',
+            0,
+          ),
+          isA<MouseFocus>().having(
+            (MouseFocus element) => element.value,
+            'mousefocus',
+            isFalse,
+          ),
+          isA<PumBlend>().having(
+            (PumBlend element) => element.value,
+            'pumblend',
+            0,
+          ),
+          isA<ShowTabline>().having(
+            (ShowTabline element) => element.value,
+            'showtabline',
+            1,
+          ),
+          isA<TTimeout>().having(
+            (TTimeout element) => element.value,
+            'ttimeout',
+            isTrue,
+          ),
+          isA<TTimeoutLen>().having(
+            (TTimeoutLen element) => element.value,
+            'ttimeoutlen',
+            50,
+          ),
+        ]),
       ),
     );
+
+    expect(iterator.moveNext(), isTrue);
+    expect(
+      iterator.current,
+      isA<DefaultColorsSet>(),
+    );
+
+    expect(iterator.moveNext(), isTrue);
+    expect(
+      iterator.current,
+      isA<OptionSet>().having(
+        (OptionSet event) => event.options,
+        'options',
+        isEmpty,
+      ),
+    );
+
+    expect(iterator.moveNext(), isTrue);
+    expect(
+      iterator.current,
+      isA<DefaultColorsSet>(),
+    );
+
+    expect(iterator.moveNext(), isTrue);
+    expect(
+      iterator.current,
+      isA<GridResize>()
+          .having(
+            (GridResize event) => event.grid,
+            'grid index should be 1', // why?
+            1,
+          )
+          .having(
+            (GridResize event) => event.width,
+            'width should be what we initialized uiAttach with',
+            width,
+          )
+          .having(
+            (GridResize event) => event.height,
+            'height should be what we initialized uiAttach with',
+            height,
+          ),
+    );
+
+    expect(iterator.moveNext(), isTrue);
+    expect(
+      iterator.current,
+      isA<GridClear>().having(
+        (GridClear event) => event.grid,
+        'grid',
+        equals(1),
+      ),
+    );
+
+    expect(iterator.moveNext(), isTrue);
+    expect(
+      iterator.current,
+      isA<WinViewport>()
+          .having(
+            (WinViewport event) => event.grid,
+            'grid',
+            equals(2), // how many grids do we have?
+          )
+          .having(
+            (WinViewport event) => event.win,
+            'win',
+            containsAllInOrder(const <int>[205, 3, 232]),
+          ),
+    );
+
+    expect(iterator.moveNext(), isTrue);
+    expect(
+      iterator.current,
+      isA<GridLine>(), // TODO need to assert on the individual lines
+    );
+
+    expect(iterator.moveNext(), isTrue);
+    expect(
+      iterator.current,
+      isA<WinViewport>().having(
+        (WinViewport event) => event.grid,
+        'grid',
+        equals(2), // how many grids do we have?
+      ),
+    );
+
+    expect(iterator.moveNext(), isTrue);
+    expect(
+      iterator.current,
+      equals(Flush.instance),
+    );
+
+    expect(iterator.moveNext(), isFalse);
   });
 }
