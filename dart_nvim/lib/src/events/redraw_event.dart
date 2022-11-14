@@ -60,7 +60,6 @@ class RedrawEvent extends Event {
           // TODO implement mouse
           return null;
       }
-      print(param);
       throw UnimplementedError('TODO implement $head redraw subevent');
     });
     return RedrawEvent._(subEvents.whereType<RedrawSubEvent>());

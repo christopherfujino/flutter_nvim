@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dart_nvim/dart_nvim.dart';
-import 'package:dart_nvim/src/api_calls.dart';
 import 'package:flutter/material.dart';
 
 const Logger logger = Logger();
@@ -39,7 +38,10 @@ class _EditorWidgetState extends State<EditorWidget> {
   }
 
   Future<void> _initialize() async {
-    nvim = NeoVim(logger: logger);
+    nvim = NeoVim(
+      binaryPath: '../third_party/neovim/build/bin/nvim',
+      logger: logger,
+    );
 
     nvim.notifications.listen((Event event) {
       switch (event.runtimeType) {
