@@ -5,7 +5,7 @@ import 'dart:typed_data' show Uint8List;
 
 import 'api_calls.dart' show ApiCalls;
 import 'common.dart';
-import 'events.dart';
+import 'events/events.dart';
 
 import 'package:messagepack/messagepack.dart' as msg;
 
