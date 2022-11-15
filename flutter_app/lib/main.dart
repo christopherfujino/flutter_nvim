@@ -44,18 +44,10 @@ class _EditorWidgetState extends State<EditorWidget> {
     );
 
     nvim.notifications.listen((Event event) {
+      _notificationCount += 1;
       switch (event.runtimeType) {
         case RedrawEvent:
-          event as RedrawEvent;
-          print('updating UI for redraw');
-          setState(() {
-            final GridResize resize = event.gridResize;
-            _message =
-                'grid: ${resize.grid}\nwidth: ${resize.width}\nheight: ${resize.height}';
-            _notificationCount += 1;
-            isReady = true;
-          });
-          break;
+          return _handleRedraw(event as RedrawEvent);
         default:
           throw UnimplementedError('Yikes! ${event.runtimeType}');
       }
@@ -63,6 +55,22 @@ class _EditorWidgetState extends State<EditorWidget> {
 
     await nvim.getApiInfo();
     await nvim.uiAttach(500, 500);
+  }
+
+  void _handleRedraw(RedrawEvent event) {
+    print('updating UI for redraw');
+    for (final RedrawSubEvent subEvent in event.subEvents) {
+      switch (subEvent.runtimeType) {
+        case Flush:
+          setState(() {
+            _message = 'flush it baby!';
+            isReady = true;
+          });
+          break;
+        default:
+          print('TODO handle ${subEvent.runtimeType}');
+      }
+    }
   }
 
   @override
