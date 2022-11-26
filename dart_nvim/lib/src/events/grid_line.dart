@@ -14,7 +14,7 @@ class GridLine extends RedrawSubEvent {
           grid: line[0] as int,
           row: line[1] as int,
           colStart: line[2] as int,
-          cells: line[3] as Iterable<Iterable<Object?>>,
+          cells: (line[3] as List<Object?>).cast<List<Object?>>(),
         );
       }),
     );
@@ -32,5 +32,5 @@ class GridLineElement {
   final int grid;
   final int row;
   final int colStart;
-  final Iterable<Iterable<Object?>> cells;
+  final List<List<Object?>> cells;
 }

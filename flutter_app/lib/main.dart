@@ -67,6 +67,11 @@ class _EditorWidgetState extends State<EditorWidget> {
             isReady = true;
           });
           break;
+        case GridLine:
+          for (final GridLineElement line in (subEvent as GridLine).gridlines) {
+            print('${line.cells.length}\t${line.cells}');
+          }
+          break;
         default:
           print('TODO handle ${subEvent.runtimeType}');
       }
