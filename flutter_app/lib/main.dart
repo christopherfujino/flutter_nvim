@@ -73,6 +73,8 @@ class _EditorWidgetState extends State<EditorWidget> {
           _gridWidth = subEvent.width;
           _gridHeight = subEvent.height;
           logger.printTrace('grid_resize: $_gridHeight x $_gridWidth');
+        case WinViewport():
+          logger.printTrace(subEvent); // TODO actually handle
         case GridClear():
           _grid = List<List<String>>.generate(
             _gridHeight,

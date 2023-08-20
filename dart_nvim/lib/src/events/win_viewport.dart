@@ -45,4 +45,15 @@ class WinViewport extends RedrawSubEvent {
   final int curline;
   final int curcol;
   final int lineCount;
+
+  @override
+  String toString() => '''WinViewport(
+  grid: $grid,
+  win: $win,
+  topline: $topline,
+  botline: $botline,
+  curline: $curline,
+  curcol: $curcol,
+  lineCount: $lineCount,
+)''';
 }
