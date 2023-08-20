@@ -33,7 +33,7 @@ class EditorWidget extends StatefulWidget {
 
 class _EditorWidgetState extends State<EditorWidget> {
   _EditorWidgetState();
-  late final NeoVim nvim;
+  NeoVim? nvim;
   bool isReady = false;
   List<List<String>> _grid = <List<String>>[];
   late int _gridWidth;
@@ -46,12 +46,12 @@ class _EditorWidgetState extends State<EditorWidget> {
   }
 
   Future<void> _initialize() async {
+    unawaited(nvim?.dispose());
     nvim = NeoVim(
       binaryPath: nvimPath,
       logger: logger,
     );
-
-    nvim.notifications.listen((Event event) {
+    nvim!.notifications.listen((Event event) {
       switch (event.runtimeType) {
         case RedrawEvent:
           return _handleRedraw(event as RedrawEvent);
@@ -60,11 +60,8 @@ class _EditorWidgetState extends State<EditorWidget> {
       }
     });
 
-    await nvim.getApiInfo();
-    final attachResponse = await nvim.uiAttach(100, 35);
-    print(attachResponse.msgid);
-    print('attachResponse.error = ${attachResponse.error}');
-    print('attachResponse.result = ${attachResponse.result}');
+    await nvim!.getApiInfo();
+    await nvim!.uiAttach(100, 35);
   }
 
   void _handleRedraw(RedrawEvent event) {
@@ -94,8 +91,7 @@ class _EditorWidgetState extends State<EditorWidget> {
           logger.printTrace('flush');
         case GridLine():
           for (final GridLineElement line in subEvent.gridlines) {
-            print(
-                'row: ${line.row}\tcolStart: ${line.colStart}\t${line.cells}');
+            //print('row: ${line.row}\tcolStart: ${line.colStart}\t${line.cells}');
             //final grid = line.grid; // TODO handle grid
             int colOffset = line.colStart;
             for (final List<Object?> cell in line.cells) {
@@ -132,6 +128,7 @@ class _EditorWidgetState extends State<EditorWidget> {
               'nvim binary is not yet ready...',
               style: textStyle,
             ),
+            _borkButton(),
           ],
         ),
       );
@@ -140,15 +137,23 @@ class _EditorWidgetState extends State<EditorWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         textDirection: TextDirection.ltr,
-        children: _grid
-            .map(
-              (List<String> chars) => Text(
-                chars.join(''),
-                style: textStyle,
-              ),
-            )
-            .toList(),
+        children: <Widget>[
+          ..._grid
+              .map(
+                (List<String> chars) => Text(
+                  chars.join(''),
+                  style: textStyle,
+                ),
+              )
+              .toList(),
+          _borkButton(),
+        ],
       ),
     );
   }
+
+  Widget _borkButton() => TextButton(
+        child: const Text('Bork'),
+        onPressed: _initialize,
+      );
 }
