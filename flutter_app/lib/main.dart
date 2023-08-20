@@ -1,11 +1,16 @@
 import 'dart:async';
+import 'dart:io' as io;
 
 import 'package:dart_nvim/dart_nvim.dart';
 import 'package:flutter/material.dart';
 
 const Logger logger = Logger();
+const nvimPath = String.fromEnvironment('nvim_path');
 
 Future<void> main() async {
+  if (nvimPath.isEmpty) {
+    throw Exception('You did not provide --dart-define=nvim_path=</path/to/nvim>');
+  }
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     const Directionality(
@@ -39,7 +44,7 @@ class _EditorWidgetState extends State<EditorWidget> {
 
   Future<void> _initialize() async {
     nvim = NeoVim(
-      binaryPath: '../third_party/neovim/build/bin/nvim',
+      binaryPath: nvimPath,
       logger: logger,
     );
 

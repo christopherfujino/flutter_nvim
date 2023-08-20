@@ -29,7 +29,8 @@ abstract class NeoVimInterface {
           onListen: () => logger.printTrace('Listener attached!'),
         ) {
     process.onError((Object error, StackTrace stacktrace) {
-      throw 'Whoopsies!\n$error';
+      print(io.Directory.current);
+      throw 'Whoopsies!\n$error\n$stacktrace';
     });
     process.then((io.Process process) {
       _stdoutSub = process.stdout.listen((List<int> data) {
