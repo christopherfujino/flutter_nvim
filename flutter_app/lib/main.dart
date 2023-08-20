@@ -61,7 +61,10 @@ class _EditorWidgetState extends State<EditorWidget> {
     });
 
     await nvim.getApiInfo();
-    await nvim.uiAttach(200, 50);
+    final attachResponse = await nvim.uiAttach(100, 35);
+    print(attachResponse.msgid);
+    print('attachResponse.error = ${attachResponse.error}');
+    print('attachResponse.result = ${attachResponse.result}');
   }
 
   void _handleRedraw(RedrawEvent event) {
@@ -72,7 +75,7 @@ class _EditorWidgetState extends State<EditorWidget> {
           //subEvent.grid; // TODO handle grid
           _gridWidth = subEvent.width;
           _gridHeight = subEvent.height;
-          print('grid_resize: $_gridHeight x $_gridWidth');
+          logger.printTrace('grid_resize: $_gridHeight x $_gridWidth');
         case GridClear():
           _grid = List<List<String>>.generate(
             _gridHeight,
@@ -83,15 +86,16 @@ class _EditorWidgetState extends State<EditorWidget> {
             ),
             growable: false,
           );
-          print('grid_clear: $_gridHeight x $_gridWidth');
+          logger.printTrace('grid_clear: $_gridHeight x $_gridWidth');
         case Flush():
           setState(() {
             isReady = true;
           });
-          print('flush');
+          logger.printTrace('flush');
         case GridLine():
           for (final GridLineElement line in subEvent.gridlines) {
-            print('row: ${line.row}\tcolStart: ${line.colStart}\t${line.cells}');
+            print(
+                'row: ${line.row}\tcolStart: ${line.colStart}\t${line.cells}');
             //final grid = line.grid; // TODO handle grid
             int colOffset = line.colStart;
             for (final List<Object?> cell in line.cells) {
@@ -101,37 +105,22 @@ class _EditorWidgetState extends State<EditorWidget> {
                 repeat = cell[2] as int;
               }
               for (int i = 0; i < repeat; i++) {
-                try {
-                  _grid[line.row][colOffset] = text;
-                  //_grid[line.row][i] = text;
-                } on RangeError {
-                  print('cell = $cell');
-                  rethrow;
-                }
+                _grid[line.row][colOffset] = text;
                 colOffset += 1;
               }
             }
           }
         default:
-          print('TODO handle ${subEvent.runtimeType}');
+          logger.printError('TODO handle ${subEvent.runtimeType}');
       }
-      //switch (subEvent.runtimeType) {
-      //  case Flush:
-      //    setState(() {
-      //      _message = 'flush it baby!';
-      //      isReady = true;
-      //    });
-      //    break;
-      //  case GridLine:
-      //    for (final GridLineElement line in (subEvent as GridLine).gridlines) {
-      //      print('${line.cells.length}\t${line.cells}');
-      //    }
-      //    break;
-      //  default:
-      //    print('TODO handle ${subEvent.runtimeType}');
-      //}
     }
   }
+
+  static const textStyle = TextStyle(
+    fontSize: 12,
+    color: Colors.white,
+    fontFamily: 'monospaced',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -140,24 +129,27 @@ class _EditorWidgetState extends State<EditorWidget> {
         child: Column(
           textDirection: TextDirection.ltr,
           children: <Widget>[
-            Text('nvim binary is not yet ready...'),
+            Text(
+              'nvim binary is not yet ready...',
+              style: textStyle,
+            ),
           ],
         ),
       );
     }
-    for (final row in _grid) {
-      io.stdout.writeln(row.join(''));
-    }
     return Center(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         textDirection: TextDirection.ltr,
-        children:
-            _grid.map((List<String> chars) => Text(chars.join(''))).toList(),
-            //_grid.map((List<String> chars) => Text(chars.join(''))).toList(),
-            //const <Widget>[
-            //  Text('abcd'),
-            //  Text('1234'),
-            //],
+        children: _grid
+            .map(
+              (List<String> chars) => Text(
+                chars.join(''),
+                style: textStyle,
+                textAlign: TextAlign.left,
+              ),
+            )
+            .toList(),
       ),
     );
   }
