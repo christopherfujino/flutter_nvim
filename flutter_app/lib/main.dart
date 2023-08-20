@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:io' as io;
 
 import 'package:dart_nvim/dart_nvim.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 const Logger logger = Logger();
 const nvimPath = String.fromEnvironment('nvim_path');
@@ -81,7 +81,7 @@ class _EditorWidgetState extends State<EditorWidget> {
             _gridHeight,
             (int _) => List<String>.generate(
               _gridWidth,
-              (int _) => 'x',
+              (int _) => ' ',
               growable: false,
             ),
             growable: false,
@@ -116,16 +116,15 @@ class _EditorWidgetState extends State<EditorWidget> {
     }
   }
 
-  static const textStyle = TextStyle(
+  static final textStyle = GoogleFonts.sourceCodePro(
     fontSize: 12,
     color: Colors.white,
-    fontFamily: 'monospaced',
   );
 
   @override
   Widget build(BuildContext context) {
     if (!isReady) {
-      return const Center(
+      return Center(
         child: Column(
           textDirection: TextDirection.ltr,
           children: <Widget>[
@@ -146,7 +145,6 @@ class _EditorWidgetState extends State<EditorWidget> {
               (List<String> chars) => Text(
                 chars.join(''),
                 style: textStyle,
-                textAlign: TextAlign.left,
               ),
             )
             .toList(),
