@@ -14,4 +14,4 @@ esac
 
 nvim_path=$(realpath ../third_party/neovim/build/bin/nvim)
 
-flutter run -d "$DEVICE" "--dart-define=nvim_path=$nvim_path"
+exec flutter run -d "$DEVICE" "--dart-define=nvim_path=$nvim_path"

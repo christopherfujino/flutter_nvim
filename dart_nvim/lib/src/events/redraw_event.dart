@@ -72,8 +72,8 @@ abstract class RedrawSubEvent {
   const RedrawSubEvent();
 }
 
-class Flush implements RedrawSubEvent {
-  const Flush._();
+class Flush extends RedrawSubEvent {
+  const Flush();
 
-  static const Flush instance = Flush._();
+  static const Flush instance = Flush();
 }

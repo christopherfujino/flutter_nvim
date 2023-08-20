@@ -2,12 +2,12 @@ import 'redraw_event.dart' show RedrawSubEvent;
 
 /// :help ui-event-grid_line
 class GridLine extends RedrawSubEvent {
-  const GridLine._(this.gridlines);
+  const GridLine(this.gridlines);
 
   final Iterable<GridLineElement> gridlines;
 
   factory GridLine.fromList(List<Object?> params) {
-    return GridLine._(
+    return GridLine(
       params.map<GridLineElement>((Object? line) {
         line as List<Object?>;
         return GridLineElement(
