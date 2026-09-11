@@ -33,7 +33,7 @@ class EditorWidget extends StatefulWidget {
 
 class _EditorWidgetState extends State<EditorWidget> {
   _EditorWidgetState();
-  NeoVim? nvim;
+  NeoVim? _nvim;
   bool isReady = false;
   List<List<String>> _grid = <List<String>>[];
   late int _gridWidth;
@@ -46,12 +46,12 @@ class _EditorWidgetState extends State<EditorWidget> {
   }
 
   Future<void> _initialize() async {
-    unawaited(nvim?.dispose());
-    nvim = NeoVim(
+    unawaited(_nvim?.dispose());
+    _nvim = NeoVim(
       binaryPath: nvimPath,
       logger: logger,
     );
-    nvim!.notifications.listen((Event event) {
+    _nvim!.notifications.listen((Event event) {
       switch (event.runtimeType) {
         case RedrawEvent:
           return _handleRedraw(event as RedrawEvent);
@@ -60,8 +60,8 @@ class _EditorWidgetState extends State<EditorWidget> {
       }
     });
 
-    await nvim!.getApiInfo();
-    await nvim!.uiAttach(100, 35);
+    await _nvim!.getApiInfo();
+    await _nvim!.uiAttach(100, 35);
   }
 
   void _handleRedraw(RedrawEvent event) {

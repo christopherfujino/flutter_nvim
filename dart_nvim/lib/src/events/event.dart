@@ -1,4 +1,4 @@
-/// See `help: ui.txt`.
+/// See `:help ui.txt`.
 abstract class Event {
   const Event();
 }
