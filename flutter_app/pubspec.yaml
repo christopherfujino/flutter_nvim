@@ -6,6 +6,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 0.1.0
 
 environment:
+  # Use flutter tag 3.13.9
   sdk: ">=3.1.0-262 <4.0.0"
 
 dependencies:
