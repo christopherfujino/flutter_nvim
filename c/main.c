@@ -1,15 +1,9 @@
-// For fdopen() in stdio.h:
-// https://stackoverflow.com/questions/75776439/any-way-to-get-fdopen-functionality-with-c99
-// TODO you can avoid this by changing the fileReader and fileWriter funcs
-#ifdef _POSIX_C_SOURCE
-#undef _POSIX_C_SOURCE
-#endif
-#define _POSIX_C_SOURCE 200809L
-
+#include <assert.h>    // assert()
 #include <signal.h>    // kill()
 #include <stdint.h>    // uint8_t
 #include <stdio.h>     // fprintf(), perror(), stderr
 #include <stdlib.h>    // abort()
+#include <string.h>    // strdup()
 #include <sys/types.h> // pid_t
 #include <unistd.h>    // dup2(), execlp(), fork(), pipe()
 
@@ -22,14 +16,43 @@ typedef struct {
   size_t size;
 } NvimString;
 
-static bool readBytes(void *data, size_t sz, FILE *fh) {
-  return fread(data, sizeof(uint8_t), sz, fh) == (sz * sizeof(uint8_t));
+typedef enum : int {
+  messageTypeRequest = 0,
+  messageTypeResponse = 1,
+  messageTypeNotification = 2,
+} MessageType;
+
+typedef enum {
+  nvimGetApiInfo,
+} RequestMethod;
+
+/// NOTE: Allocates a new string for `namePtr`.
+static bool requestMethodName(RequestMethod method, char **namePtr,
+                              size_t *size) {
+  switch (method) {
+  case nvimGetApiInfo: {
+    const char name[] = "nvim_get_api_info";
+    *size = sizeof(name);
+    *namePtr = strdup(name);
+    if (*namePtr == nullptr) {
+      perror("strdup() failed");
+      abort();
+    }
+    return true;
+  }
+  default:
+    abort();
+  }
 }
 
 static bool fileReader(cmp_ctx_t *ctx, void *data, size_t limit) {
   int fd = *(int *)ctx->buf;
-  read();
-  return readBytes(data, limit, (FILE *)ctx->buf);
+  ssize_t n = read(fd, data, limit);
+  if (n < 0) {
+    perror("read() failed");
+    abort();
+  }
+  return (size_t)n == limit;
 }
 
 static bool fileSkipper(cmp_ctx_t *, size_t) { abort(); }
@@ -42,30 +65,159 @@ static size_t fileWriter(cmp_ctx_t *ctx, const void *data, size_t count) {
 
 static inline void check(cmp_ctx_t *cmp, bool success) {
   if (!success) {
-    fprintf(stderr, "%s", cmp_strerror(cmp));
+    fprintf(stderr, "%s\n", cmp_strerror(cmp));
     abort();
   }
 }
 
-static void request(cmp_ctx_t *cmp, size_t methodSize,
-                    const char method[methodSize]) {
+static inline void _indent(unsigned int depth) {
+  for (unsigned int i = 0; i < depth; i++) {
+    fputc(' ', stdout);
+    fputc(' ', stdout);
+  }
+}
+
+static void request(cmp_ctx_t *cmp, RequestMethod method) {
   static uint32_t msgid = 0;
-  constexpr NvimInteger REQUEST_TYPE = 0;
+
+  char *methodName;
+  size_t methodSize;
+  if (!requestMethodName(method, &methodName, &methodSize)) {
+    abort();
+  }
 
   // [type, msgid, method, params]
   check(cmp, cmp_write_array(cmp, 4));
-  check(cmp, cmp_write_integer(cmp, REQUEST_TYPE));
+  check(cmp, cmp_write_integer(cmp, messageTypeRequest));
   check(cmp, cmp_write_integer(cmp, msgid++));
-  check(cmp, cmp_write_str(cmp, method, methodSize));
+  check(cmp, cmp_write_str(cmp, methodName, methodSize));
   check(cmp, cmp_write_array(cmp, 0));
-  fflush(cmp->buf);
+
+  free(methodName);
 }
 
-// static void parseResponse(cmp_ctx_t *cmp, uint8_t *buf) {
-//   uint32_t arraySize;
-//   check(cmp, cmp_read_array(cmp, &arraySize));
-//   cmp_read_int();
-// }
+static void _debugMsgpackObjectRec(cmp_ctx_t *cmp, cmp_object_t *obj,
+                                   unsigned int depth) {
+  uint32_t size = 0;
+  switch (obj->type) {
+  case CMP_TYPE_NIL:
+    _indent(depth);
+    fputs("nil", stdout);
+    return;
+  case CMP_TYPE_FIXARRAY:
+    size = obj->as.array_size;
+    _indent(depth);
+    printf("[\n");
+    for (unsigned int i = 0; i < size; i++) {
+      if (i > 0) {
+        printf(",\n");
+      }
+      cmp_object_t curObj = {0};
+      check(cmp, cmp_read_object(cmp, &curObj));
+      _debugMsgpackObjectRec(cmp, &curObj, depth + 1);
+    }
+    printf("\n");
+    _indent(depth);
+    printf("]\n");
+    return;
+  case CMP_TYPE_NEGATIVE_FIXNUM:
+  case CMP_TYPE_POSITIVE_FIXNUM: {
+    int32_t i = 0;
+    check(cmp, cmp_object_as_int(obj, &i));
+    _indent(depth);
+    printf("%d", i);
+    return;
+  }
+
+  case CMP_TYPE_FIXSTR:
+  case CMP_TYPE_STR8:
+  case CMP_TYPE_STR16:
+  case CMP_TYPE_STR32: {
+    size = 0;
+    check(cmp, cmp_object_as_str(obj, &size));
+    {
+      // TODO: use a static buffer
+      char *string = calloc(size + 3, sizeof(uint8_t));
+      string[0] = '"';
+      string[size + 1] = '"';
+      string[size + 2] = '\0';
+
+      cmp->read(cmp, string + 1, size);
+      _indent(depth);
+      printf("%s", string);
+
+      free(string);
+    }
+    return;
+  }
+
+  case CMP_TYPE_FIXMAP:
+  case CMP_TYPE_BOOLEAN:
+  case CMP_TYPE_BIN8:
+  case CMP_TYPE_BIN16:
+  case CMP_TYPE_BIN32:
+  case CMP_TYPE_EXT8:
+  case CMP_TYPE_EXT16:
+  case CMP_TYPE_EXT32:
+  case CMP_TYPE_FLOAT:
+  case CMP_TYPE_DOUBLE:
+  case CMP_TYPE_UINT8:
+  case CMP_TYPE_UINT16:
+  case CMP_TYPE_UINT32:
+  case CMP_TYPE_UINT64:
+  case CMP_TYPE_SINT8:
+  case CMP_TYPE_SINT16:
+  case CMP_TYPE_SINT32:
+  case CMP_TYPE_SINT64:
+  case CMP_TYPE_FIXEXT1:
+  case CMP_TYPE_FIXEXT2:
+  case CMP_TYPE_FIXEXT4:
+  case CMP_TYPE_FIXEXT8:
+  case CMP_TYPE_FIXEXT16:
+  case CMP_TYPE_ARRAY16:
+  case CMP_TYPE_ARRAY32:
+  case CMP_TYPE_MAP16:
+  case CMP_TYPE_MAP32:
+    abort();
+    break;
+  }
+}
+
+static void debugMsgpackObject(cmp_ctx_t *cmp, cmp_object_t *obj) {
+  _debugMsgpackObjectRec(cmp, obj, 0);
+  fflush(stdout);
+}
+
+static void parseNvimMessage(cmp_ctx_t *cmp) {
+  uint32_t arraySize;
+  check(cmp, cmp_read_array(cmp, &arraySize));
+
+  MessageType messageType;
+  check(cmp, cmp_read_int(cmp, &messageType));
+
+  switch (messageType) {
+  case messageTypeRequest:
+    abort();
+    break;
+  case messageTypeResponse:
+    // [type, msgid, error, result]
+    assert(arraySize == 4);
+    uint32_t msgId = 0;
+    check(cmp, cmp_read_uint(cmp, &msgId));
+    cmp_object_t obj = {0};
+    check(cmp, cmp_read_object(cmp, &obj));
+    if (!cmp_object_is_nil(&obj)) {
+      debugMsgpackObject(cmp, &obj);
+      abort();
+    }
+    break;
+  case messageTypeNotification:
+    // [type, method, params]
+    // TODO implement
+    abort();
+    break;
+  }
+}
 
 [[maybe_unused]]
 static inline void _writeDebugFile(size_t n, uint8_t *buf) {
@@ -78,100 +230,86 @@ static inline void _writeDebugFile(size_t n, uint8_t *buf) {
   printf("Wrote data to msg.dat.\n");
 }
 
-int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
-  int nvimToClientRead;
-  int nvimToClientWrite;
-  int clientToNvimRead;
-  int clientToNvimWrite;
-  int res = 0;
-  {
-    int twoPipes[2];
-    res = pipe(twoPipes);
-    if (res < 0) {
-      perror("pipe() failed");
-      abort();
-    }
-    nvimToClientRead = twoPipes[0];
-    nvimToClientWrite = twoPipes[1];
-  }
-  {
-    int twoPipes[2];
-    res = pipe(twoPipes);
-    if (res < 0) {
-      perror("pipe() failed");
-      abort();
-    }
-    clientToNvimRead = twoPipes[0];
-    clientToNvimWrite = twoPipes[1];
-  }
-  pid_t nvimPid = fork();
+typedef struct {
+  int read;
+  int write;
+} Pipe;
 
-  if (nvimPid == 0) {
-    res = dup2(nvimToClientWrite, STDOUT_FILENO);
+Pipe pipeNew() {
+  int twoPipes[2];
+  int res = pipe(twoPipes);
+  if (res < 0) {
+    perror("pipe() failed");
+    abort();
+  }
+  return (Pipe){
+      .read = twoPipes[0],
+      .write = twoPipes[1],
+  };
+}
+
+Pipe pipeAndFork(pid_t *pid) {
+  Pipe nvimToClient = pipeNew();
+  Pipe clientToNvim = pipeNew();
+
+  *pid = fork();
+  int res = 0;
+
+  if (*pid == 0) {
+    res = dup2(nvimToClient.write, STDOUT_FILENO);
     if (res < 0) {
       perror("dup2() failed");
       abort();
     }
-    res = close(nvimToClientRead);
+    res = close(nvimToClient.read);
     if (res < 0) {
       perror("close() failed");
       abort();
     }
-    res = dup2(clientToNvimRead, STDIN_FILENO);
+    res = dup2(clientToNvim.read, STDIN_FILENO);
     if (res < 0) {
       perror("dup2() failed");
       abort();
     }
-    res = close(clientToNvimWrite);
+    res = close(clientToNvim.write);
     if (res < 0) {
       perror("close() failed");
       abort();
     }
-    // execlp("nvim", "nvim", "-u", "NONE", "--embed", nullptr);
-    execlp("nvim", "nvim", "--embed", nullptr);
-    // execlp("/home/chris/git/flutter_nvim/c/stub.rb", "stub.rb", nullptr);
+    execlp("nvim", "nvim", "-u", "NONE", "--embed", nullptr);
     perror("execlp() failed");
     abort();
   }
 
-  res = close(nvimToClientWrite);
+  res = close(nvimToClient.write);
   if (res < 0) {
     perror("close() failed");
     abort();
   }
-  res = close(clientToNvimRead);
+  res = close(clientToNvim.read);
   if (res < 0) {
     perror("close() failed");
     abort();
   }
 
-  // TODO check pid for error
-  // FILE *writeFile = fdopen(clientToNvimWrite, "w");
-  // if (writeFile == nullptr) {
-  //  perror("fdopen() failed");
-  //  abort();
-  //}
+  return (Pipe){
+      .read = nvimToClient.read,
+      .write = clientToNvim.write,
+  };
+}
 
-  // FILE *readFile = fdopen(nvimToClientRead, "r");
-  // if (readFile == nullptr) {
-  //   perror("fdopen() failed");
-  //   abort();
-  // }
-
+int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
+  pid_t pid = 0;
+  Pipe p = pipeAndFork(&pid);
   cmp_ctx_t cmpWrite, cmpRead = {0};
-  cmp_init(&cmpWrite, &clientToNvimWrite, nullptr, fileSkipper, fileWriter);
-  cmp_init(&cmpRead, &nvimToClientRead, fileReader, fileSkipper, nullptr);
+  cmp_init(&cmpWrite, &p.write, nullptr, fileSkipper, fileWriter);
+  cmp_init(&cmpRead, &p.read, fileReader, fileSkipper, nullptr);
 
-  const char method[] = "nvim_get_api_info";
-  request(&cmpWrite, sizeof(method), method);
+  request(&cmpWrite, nvimGetApiInfo);
 
-  printf("[cnvim.exe] Awaiting array read...\n");
-  uint32_t arrayLen;
-  check(&cmpRead, cmp_read_array(&cmpRead, &arrayLen));
-  // size_t n = read(nvimToClientRead, buf, BUFSIZ);
-  printf("Got an array of len %d from Neovim.\n", arrayLen);
-  // parseResponse(&cmpRead, buf);
+  printf("Awaiting array read...\n");
+  parseNvimMessage(&cmpRead);
 
-  kill(nvimPid, SIGKILL);
+  kill(pid, SIGKILL);
   printf("\nDone.\n");
 }

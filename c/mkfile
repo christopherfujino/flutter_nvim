@@ -1,10 +1,10 @@
 PROJECT = cnvim
 CC = bear --append -- clang
-CSTANDARD = -std=c23
+CSTANDARD = -std=gnu23
 DEBUG_FLAGS = -g -O0
-CMP_ROOT = ../third_party/cmp-20
+CMP_ROOT = $PWD/../third_party/cmp-20
 CMP_OBJ = $CMP_ROOT/cmp.o
-CFLAGS = $DEBUG_FLAGS -Wall -Werror -Wextra -Wpedantic $CSTANDARD -I$CMP_ROOT/
+CFLAGS = $DEBUG_FLAGS -Wall -Werror -Wextra -Wpedantic -Wvla $CSTANDARD -I$CMP_ROOT/
 LDFLAGS = 
 
 $PROJECT.exe: main.o $CMP_OBJ
