@@ -6,6 +6,9 @@ case $(uname) in
   Darwin)
     DEVICE='macos'
     ;;
+  Linux)
+    DEVICE='linux'
+    ;;
   *)
     echo "Did not implement uname=$(uname)!"
     exit 1

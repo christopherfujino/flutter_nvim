@@ -1,0 +1,2 @@
+run:V:
+  dart bin/cli_entrypoint.dart

@@ -1,0 +1,9 @@
+#!/usr/bin/env sloth
+
+with ($cwd = "${ $scriptDir }/neovim") {
+  # Just deleting the build dir is not sufficient, there are some additional
+  # caches under .deps
+  "git clean -xffd"!
+
+  "make CMAKE_BUILD_TYPE=RelWithDebInfo"!
+}
