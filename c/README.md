@@ -1,0 +1,3 @@
+- https://neovim.io/doc/user/api
+- https://github.com/msgpack-rpc/msgpack-rpc/blob/master/spec.md
+- https://github.com/msgpack/msgpack/blob/master/spec.md

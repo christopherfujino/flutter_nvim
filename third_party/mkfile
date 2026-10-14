@@ -1,0 +1,8 @@
+REMOTE_TARBALL = https://github.com/camgunz/cmp/archive/refs/tags/v20.tar.gz
+LOCAL_TARBALL = cmp-v20.tar.gz
+
+cmp.stamp:
+  curl -L "$REMOTE_TARBALL" -o "$LOCAL_TARBALL"
+  tar xvzf "$LOCAL_TARBALL"
+  rm "$LOCAL_TARBALL"
+  date > $target

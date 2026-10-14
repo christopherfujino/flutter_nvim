@@ -1,0 +1,26 @@
+PROJECT = cnvim
+CC = bear --append -- clang
+CSTANDARD = -std=c23
+DEBUG_FLAGS = -g -O0
+CMP_ROOT = ../third_party/cmp-20
+CMP_OBJ = $CMP_ROOT/cmp.o
+CFLAGS = $DEBUG_FLAGS -Wall -Werror -Wextra -Wpedantic $CSTANDARD -I$CMP_ROOT/
+LDFLAGS = 
+
+$PROJECT.exe: main.o $CMP_OBJ
+	$CC $LDFLAGS $prereq -o $target
+
+%.o: %.c
+	$CC $CFLAGS -c $stem.c -o $target
+
+$CMP_OBJ: ../third_party/cmp-20/cmp.c
+	$CC $CFLAGS -c $prereq -o $target
+
+#<../../mkfiles/static-lib-with-entrypoints.mkfile
+#
+#lib/lib$PROJECT.a: lib/mod1.o
+
+clean:V:
+	rm -rf *.o *.a *.d *.exe $CMP_OBJ
+
+# vim: ft=make

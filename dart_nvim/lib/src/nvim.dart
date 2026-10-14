@@ -174,9 +174,13 @@ abstract class NeoVimInterface {
       }
     } on FormatException {
       final StringBuffer buffer = StringBuffer();
-      buffer.write('[');
-      buffer.write(bytes.join(', '));
-      buffer.write(']');
+      for (int i = 0; i < bytes.length; i++) {
+        if (i % 10 == 0) {
+          buffer.write('\n');
+        }
+        buffer.write(bytes[i].toRadixString(16).padLeft(2, '0'));
+        buffer.write(' ');
+      }
       final io.File file = io.File('deleteme.txt')
         ..writeAsStringSync(buffer.toString());
       logger.printTrace('wrote file ${file.path} to disk');

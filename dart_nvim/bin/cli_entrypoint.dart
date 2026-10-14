@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io' as io;
-import 'package:dart_nvim/dart_nvim.dart' show NeoVim;
+import 'package:dart_nvim/dart_nvim.dart' show ApiInfoResponse, NeoVim;
 import 'package:dart_nvim/src/common.dart';
 import 'package:dart_nvim/src/events/events.dart';
 
@@ -13,7 +13,8 @@ Future<void> main(List<String> args) async {
   });
   final io.Process process = await nvim.process;
   logger.printStatus('spawned nvim with PID ${process.pid}');
-  await nvim.getApiInfo();
+  final ApiInfoResponse res = await nvim.getApiInfo();
+  print(res);
 
   await nvim.uiAttach(5, 5);
   await completer.future;
